@@ -4,207 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deep Dive into Canvas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <style>
-        :root {
-            --primary-color: #246;
-            --secondary-color: #48c;
-            --background-color: #f8f9fa;
-            --code-background: #282a36;
-            --text-color: #333;
-            --section-spacing: 4rem;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    width: {
+                        'canvas-w': '300px'
+                    },
+                    height: {
+                        'canvas-h': '200px'
+                    }
+                }
+            }
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: var(--text-color);
-            background: var(--background-color);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        header {
-            background: var(--primary-color);
-            color: white;
-            padding: 4rem 0;
-            margin-bottom: var(--section-spacing);
-        }
-
-        header h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-
-        section {
-            margin-bottom: var(--section-spacing);
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        h1, h2, h3 {
-            color: var(--primary-color);
-            margin-bottom: 1.5rem;
-        }
-
-        h2 {
-            font-size: 2rem;
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 0.5rem;
-        }
-
-        .canvas-example {
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: #f1f3f5;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        canvas {
-            border: 2px solid var(--primary-color);
-            border-radius: 4px;
-            margin: 1rem 0;
-            display: block;
-            background: white;
-        }
-
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            margin: 0.5rem 1rem 0.5rem 0;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--secondary-color);
-        }
-
+    </script>
+    <style type="text/css">
+        /* Custom styles for code blocks and canvas */
         pre {
-            background: var(--code-background);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            overflow-x: auto;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
         }
-
-        code {
-            font-family: 'Fira Code', Consolas, Monaco, monospace;
-            font-size: 0.9rem;
-        }
-
-        .comparison {
+        .canvas-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
             margin: 2rem 0;
         }
-
-        .comparison > div {
+        .canvas-example {
             background: #f8f9fa;
             padding: 1.5rem;
-            border-radius: 8px;
-        }
-
-        .highlight {
-            color: var(--primary-color);
-            font-weight: bold;
-        }
-
-        .perf-table {
-            width: 100%;
-            border-collapse: collapse;
+            border-radius: 0.5rem;
             margin: 2rem 0;
         }
-
-        .perf-table th,
-        .perf-table td {
-            border: 1px solid #dee2e6;
-            padding: 1rem;
-            text-align: left;
-        }
-
-        .perf-table th {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .perf-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        ul, ol {
-            margin-left: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        li {
-            margin-bottom: 0.5rem;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            header {
-                padding: 2rem 0;
-            }
-
-            header h1 {
-                font-size: 2rem;
-            }
-
-            .comparison {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .mermaid {
+        .canvas-example canvas {
             background: white;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 2rem 0;
+            border: 2px solid #246;
+            border-radius: 0.25rem;
+            margin: 1rem 0;
         }
-
-        .concept-definition {
-            background: #e9ecef;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin: 1.5rem 0;
-            border-left: 4px solid var(--primary-color);
-        }
-
         .example-steps {
             counter-reset: step;
             list-style-type: none;
-            margin-left: 0;
         }
-
         .example-steps li {
             position: relative;
             padding-left: 2.5rem;
             margin-bottom: 1rem;
         }
-
         .example-steps li::before {
             counter-increment: step;
             content: counter(step);
@@ -213,7 +60,7 @@
             top: 0;
             width: 1.8rem;
             height: 1.8rem;
-            background: var(--primary-color);
+            background: #246;
             color: white;
             border-radius: 50%;
             display: flex;
@@ -221,34 +68,34 @@
             justify-content: center;
             font-size: 0.9rem;
         }
-
-        .canvas-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 2rem 0;
+        .mermaid {
+            @apply bg-white p-4 rounded-lg my-8;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
 </head>
-<body>
-    <header>
-        <div class="container">
-            <h1>Deep Dive into Canvas</h1>
-            <p>A comprehensive guide to Canvas rendering, optimization, and advanced techniques</p>
+<body class="bg-gray-50 text-gray-800">
+    <header class="bg-blue-800 text-white py-16 mb-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl font-bold mb-4">Deep Dive into Canvas</h1>
+            <p class="text-xl">A comprehensive guide to Canvas rendering, optimization, and advanced techniques</p>
         </div>
     </header>
 
-    <div class="container">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- 1. Canvas Fundamentals -->
-        <section id="fundamentals">
-            <h2>1. Canvas Fundamentals</h2>
+        <section id="fundamentals" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">1. Canvas Fundamentals</h2>
 
-            <div class="concept-definition">
-                <h3>What is Canvas?</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">What is Canvas?</h3>
                 <p>The HTML Canvas API provides a means for drawing graphics via JavaScript. It's a low-level, procedural model that updates pixel by pixel.</p>
             </div>
 
-            <h3>Key Concepts</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Key Concepts</h3>
             <div class="canvas-container">
                 <div>
                     <h4>Canvas Element</h4>
@@ -270,11 +117,13 @@
                 </div>
             </div>
 
-            <h3>Basic Drawing Operations</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Basic Drawing Operations</h3>
             <div class="canvas-example">
-                <canvas id="canvas-basic" width="300" height="200"></canvas>
-                <button onclick="runBasicExample()">Draw Shapes</button>
-                <button onclick="stopBasicExample()">Clear</button>
+                <canvas id="canvas-basic" class="w-canvas-w h-canvas-h" width="300" height="200"></canvas>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="runBasicExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Draw Shapes</button>
+                    <button onclick="stopBasicExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Clear</button>
+                </div>
             </div>
             <pre><code class="language-javascript">// Basic shapes
 ctx.fillStyle = 'blue';
@@ -293,16 +142,16 @@ ctx.fill();</code></pre>
         </section>
 
         <!-- 2. Canvas Pipeline -->
-        <section id="pipeline">
-            <h2>2. Canvas Rendering Pipeline</h2>
+        <section id="pipeline" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">2. Canvas Rendering Pipeline</h2>
 
-            <div class="concept-definition">
-                <h3>How Canvas Works</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">How Canvas Works</h3>
                 <p>Canvas uses an immediate mode rendering pipeline where drawing commands are executed sequentially and directly affect the pixel buffer.</p>
             </div>
 
             <div class="mermaid">
-                graph LR
+                graph TD
                     A[JavaScript Code] -->|Draw Commands| B[Command Queue]
                     B -->|Execution| C[Canvas Context]
                     C -->|Rasterization| D[Backing Store]
@@ -312,7 +161,7 @@ ctx.fill();</code></pre>
                     style F fill:#48c,color:#fff
             </div>
 
-            <h3>Pipeline Stages</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Pipeline Stages</h3>
             <ol class="example-steps">
                 <li><strong>Command Queue:</strong> JavaScript drawing commands are collected</li>
                 <li><strong>Context Processing:</strong> Commands are processed by the 2D context</li>
@@ -324,62 +173,96 @@ ctx.fill();</code></pre>
         </section>
 
         <!-- 3. Canvas vs DOM -->
-        <section id="comparison">
-            <h2>3. Canvas vs DOM Comparison</h2>
+        <section id="comparison" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">3. Canvas vs DOM Comparison</h2>
 
-            <div class="concept-definition">
-                <h3>When to Use Canvas vs DOM?</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">When to Use Canvas vs DOM?</h3>
                 <p>Choose Canvas for complex graphics and animations, DOM for interactive UI elements and simple animations.</p>
             </div>
 
-            <div class="comparison">
-                <div>
-                    <h3>Canvas</h3>
-                    <ul>
-                        <li>✅ High performance for complex graphics</li>
-                        <li>✅ Better memory management</li>
-                        <li>✅ Pixel-level control</li>
-                        <li>❌ No built-in event handling</li>
-                        <li>❌ Manual rendering required</li>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold text-blue-800 mb-4">Canvas</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>High performance for complex graphics</span>
+                        </li>
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>Better memory management</span>
+                        </li>
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>Pixel-level control</span>
+                        </li>
+                        <li class="flex items-center text-red-600">
+                            <span class="mr-2">❌</span>
+                            <span>No built-in event handling</span>
+                        </li>
+                        <li class="flex items-center text-red-600">
+                            <span class="mr-2">❌</span>
+                            <span>Manual rendering required</span>
+                        </li>
                     </ul>
                 </div>
-                <div>
-                    <h3>DOM</h3>
-                    <ul>
-                        <li>✅ Built-in event handling</li>
-                        <li>✅ Automatic layout</li>
-                        <li>✅ Better accessibility</li>
-                        <li>❌ Performance issues with many elements</li>
-                        <li>❌ Limited visual effects</li>
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold text-blue-800 mb-4">DOM</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>Built-in event handling</span>
+                        </li>
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>Automatic layout</span>
+                        </li>
+                        <li class="flex items-center text-green-700">
+                            <span class="mr-2">✅</span>
+                            <span>Better accessibility</span>
+                        </li>
+                        <li class="flex items-center text-red-600">
+                            <span class="mr-2">❌</span>
+                            <span>Performance issues with many elements</span>
+                        </li>
+                        <li class="flex items-center text-red-600">
+                            <span class="mr-2">❌</span>
+                            <span>Limited visual effects</span>
+                        </li>
                     </ul>
                 </div>
             </div>
 
-            <h3>Side-by-Side Animation Example</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Side-by-Side Animation Example</h3>
             <div class="canvas-example">
-                <div style="position: relative; height: 100px;">
-                    <canvas id="canvas1" width="150" height="100"></canvas>
-                    <div id="box1" style="width: 20px; height: 20px; background: red; position: absolute; top: 40px;"></div>
+                <div class="relative h-[100px]">
+                    <canvas id="canvas1" class="w-[150px]" width="150" height="100"></canvas>
+                    <div id="box1" class="w-5 h-5 bg-red-500 absolute top-10"></div>
                 </div>
-                <button onclick="runExample1()">Compare Animations</button>
-                <button onclick="stopExample1()">Stop</button>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="runExample1()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Compare Animations</button>
+                    <button onclick="stopExample1()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
+                </div>
             </div>
         </section>
 
         <!-- 4. Basic Animations -->
-        <section id="basic-animations">
-            <h2>4. Basic Animations</h2>
+        <section id="basic-animations" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">4. Basic Animations</h2>
 
-            <div class="concept-definition">
-                <h3>Animation Principles</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">Animation Principles</h3>
                 <p>Canvas animations work by repeatedly clearing and redrawing the canvas with updated positions or states.</p>
             </div>
 
-            <h3>Simple Motion Animation</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Simple Motion Animation</h3>
             <div class="canvas-example">
-                <canvas id="canvas-motion" width="300" height="200"></canvas>
-                <button onclick="runMotionExample()">Run Motion</button>
-                <button onclick="stopMotionExample()">Stop</button>
+                <canvas id="canvas-motion" class="w-canvas-w h-canvas-h" width="300" height="200"></canvas>
+                <div class="flex gap-2 mt-4">
+                    <button onclick="runMotionExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Run Motion</button>
+                    <button onclick="stopMotionExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
+                </div>
             </div>
             <pre><code class="language-javascript">function animate() {
     // Clear previous frame
@@ -397,11 +280,11 @@ ctx.fill();</code></pre>
         </section>
 
         <!-- 5. Time-based Animations -->
-        <section id="time-based">
-            <h2>5. Time-based Animations</h2>
+        <section id="time-based" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">5. Time-based Animations</h2>
 
-            <div class="concept-definition">
-                <h3>Frame-based vs Time-based</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">Frame-based vs Time-based</h3>
                 <p>Time-based animations ensure consistent speed regardless of frame rate, while frame-based animations can vary with device performance.</p>
             </div>
 
@@ -416,39 +299,41 @@ ctx.fill();</code></pre>
                     F --> A
             </div>
 
-            <h3>Comparison Example</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Comparison Example</h3>
             <div class="canvas-container">
                 <div>
-                    <h4>Frame-based (Bad)</h4>
-                    <canvas id="frame-based" width="300" height="100"></canvas>
-                    <button onclick="runFrameBasedExample()">Run</button>
-                    <button onclick="stopFrameBasedExample()">Stop</button>
-                    <pre><code class="language-javascript">x += speed; // Changes per frame</code></pre>
+                    <h4 class="text-lg font-semibold mb-4">Frame-based (Bad)</h4>
+                    <canvas id="frame-based-canvas" class="w-full" width="300" height="100"></canvas>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="runFrameBasedExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Run</button>
+                        <button onclick="stopFrameBasedExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
+                    </div>
                 </div>
                 <div>
-                    <h4>Time-based (Good)</h4>
-                    <canvas id="time-based" width="300" height="100"></canvas>
-                    <button onclick="runTimeBasedExample()">Run</button>
-                    <button onclick="stopTimeBasedExample()">Stop</button>
-                    <pre><code class="language-javascript">x += speed * deltaTime; // Changes per second</code></pre>
+                    <h4 class="text-lg font-semibold mb-4">Time-based (Good)</h4>
+                    <canvas id="time-based-canvas" class="w-full" width="300" height="100"></canvas>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="runTimeBasedExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Run</button>
+                        <button onclick="stopTimeBasedExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- 6. Performance Optimization -->
-        <section id="performance">
-            <h2>6. Performance Optimization</h2>
+        <section id="performance" class="bg-white rounded-lg shadow-sm p-8 mb-16">
+            <h2 class="text-3xl font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-6">6. Performance Optimization</h2>
 
-            <div class="concept-definition">
-                <h3>Common Performance Issues</h3>
+            <div class="bg-gray-100 p-6 rounded-lg border-l-4 border-blue-800 mb-6">
+                <h3 class="text-xl font-semibold text-blue-800 mb-2">Common Performance Issues</h3>
                 <p>Canvas performance is mainly affected by the number of draw calls, canvas size, and unnecessary state changes.</p>
             </div>
 
-            <h3>Bad vs Good Practices</h3>
-            <div class="comparison">
-                <div>
-                    <h4>❌ Bad Practice</h4>
-                    <pre><code class="language-javascript">// Multiple state changes
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Bad vs Good Practices</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h4 class="text-lg font-semibold text-red-600 mb-4">❌ Bad Practice</h4>
+                    <pre class="bg-gray-900 rounded-lg p-6 whitespace-pre-wrap break-words"><code class="language-javascript">// Multiple state changes
 shapes.forEach(shape => {
     ctx.fillStyle = shape.color;
     ctx.beginPath();
@@ -456,47 +341,52 @@ shapes.forEach(shape => {
     ctx.fill();
 });</code></pre>
                 </div>
-                <div>
-                    <h4>✅ Good Practice</h4>
-                    <pre><code class="language-javascript">// Group by color
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h4 class="text-lg font-semibold text-green-600 mb-4">✅ Good Practice</h4>
+                    <pre class="bg-gray-900 rounded-lg p-6 whitespace-pre-wrap break-words"><code class="language-javascript">// Group by color
 const byColor = shapes.reduce((acc, shape) => {
-    (acc[shape.color] = acc[shape.color] || []).push(shape);
+    (acc[shape.color] = acc[shape.color] || [])
+        .push(shape);
     return acc;
 }, {});
 
 // Draw shapes grouped by color
-Object.entries(byColor).forEach(([color, shapes]) => {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    shapes.forEach(shape => {
-        ctx.arc(shape.x, shape.y, 5, 0, Math.PI * 2);
-    });
-    ctx.fill();
-});</code></pre>
+Object.entries(byColor)
+    .forEach(([color, shapes]) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        shapes.forEach(shape => {
+            ctx.arc(shape.x, shape.y,
+                   5, 0, Math.PI * 2);
+        });
+        ctx.fill();
+    });</code></pre>
                 </div>
             </div>
 
-            <h3>Performance Example</h3>
-            <div class="canvas-example">
-                <div class="canvas-container">
-                    <div>
-                        <h4>Unoptimized (1000 particles)</h4>
-                        <canvas id="unoptimized" width="300" height="200"></canvas>
-                        <button onclick="runUnoptimizedExample()">Run</button>
-                        <button onclick="stopUnoptimizedExample()">Stop</button>
-                        <div id="unoptimized-fps"></div>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Performance Example</h3>
+            <div class="canvas-container">
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Unoptimized (1000 particles)</h4>
+                    <canvas id="unoptimized" class="w-canvas-w h-canvas-h" width="300" height="200"></canvas>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="runUnoptimizedExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Run</button>
+                        <button onclick="stopUnoptimizedExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
                     </div>
-                    <div>
-                        <h4>Optimized (1000 particles)</h4>
-                        <canvas id="optimized" width="300" height="200"></canvas>
-                        <button onclick="runOptimizedExample()">Run</button>
-                        <button onclick="stopOptimizedExample()">Stop</button>
-                        <div id="optimized-fps"></div>
+                    <div id="unoptimized-fps" class="mt-2 text-sm font-mono"></div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Optimized (1000 particles)</h4>
+                    <canvas id="optimized" class="w-canvas-w h-canvas-h" width="300" height="200"></canvas>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="runOptimizedExample()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:bg-blue-800">Run</button>
+                        <button onclick="stopOptimizedExample()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 active:bg-gray-800">Stop</button>
                     </div>
+                    <div id="optimized-fps" class="mt-2 text-sm font-mono"></div>
                 </div>
             </div>
 
-            <h3>Optimization Techniques</h3>
+            <h3 class="text-2xl font-semibold text-blue-800 mb-4">Optimization Techniques</h3>
             <ol class="example-steps">
                 <li><strong>Batch Similar Operations:</strong> Group shapes by color/style</li>
                 <li><strong>Minimize State Changes:</strong> Cache and reuse styles</li>
@@ -508,278 +398,6 @@ Object.entries(byColor).forEach(([color, shapes]) => {
         </section>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-    <script>
-        // Animation IDs for stopping animations
-        let animationIds = {};
-
-        // Helper function to stop all animations
-        function stopAllAnimations() {
-            for (let id in animationIds) {
-                if (animationIds[id]) {
-                    cancelAnimationFrame(animationIds[id]);
-                    animationIds[id] = null;
-                }
-            }
-        }
-
-        // Example 1: Canvas vs DOM Animation
-        function runExample1() {
-            stopAllAnimations();
-            // Canvas Animation
-            const ctx = document.getElementById('canvas1').getContext('2d');
-            let x = 0;
-
-            function animate() {
-                ctx.clearRect(0, 0, 150, 100);
-                ctx.fillStyle = 'blue';
-                ctx.fillRect(x, 40, 20, 20);
-                x = (x + 2) % 130;
-                animationIds['example1'] = requestAnimationFrame(animate);
-            }
-            animate();
-
-            // DOM Animation
-            const box = document.getElementById('box1');
-            box.style.transition = 'none';
-            box.style.left = '0px';
-            setTimeout(() => {
-                box.style.transition = 'left 2s linear infinite';
-                box.style.left = '130px';
-            }, 0);
-        }
-
-        function stopExample1() {
-            if (animationIds['example1']) {
-                cancelAnimationFrame(animationIds['example1']);
-                animationIds['example1'] = null;
-            }
-            const box = document.getElementById('box1');
-            box.style.transition = 'none';
-            box.style.left = '0px';
-        }
-
-        // Example 2: Frame Rate Control
-        function runExample2() {
-            stopAllAnimations();
-            const ctx = document.getElementById('canvas2').getContext('2d');
-            let x = 0;
-            let lastTime = 0;
-            const targetFPS = 30;
-            const frameInterval = 1000 / targetFPS;
-
-            function animate(currentTime) {
-                if (!lastTime) lastTime = currentTime;
-                const deltaTime = currentTime - lastTime;
-
-                if (deltaTime >= frameInterval) {
-                    ctx.clearRect(0, 0, 150, 100);
-                    ctx.fillStyle = 'purple';
-                    ctx.fillRect(x, 40, 20, 20);
-                    x = (x + 4) % 130;
-                    lastTime = currentTime;
-                }
-
-                animationIds['example2'] = requestAnimationFrame(animate);
-            }
-            animate(0);
-        }
-
-        function stopExample2() {
-            if (animationIds['example2']) {
-                cancelAnimationFrame(animationIds['example2']);
-                animationIds['example2'] = null;
-            }
-        }
-
-        // Example 3: Double Buffering
-        function runExample3() {
-            stopAllAnimations();
-            const displayCanvas = document.getElementById('canvas3');
-            const ctx = displayCanvas.getContext('2d');
-            const bufferCanvas = document.createElement('canvas');
-            bufferCanvas.width = displayCanvas.width;
-            bufferCanvas.height = displayCanvas.height;
-            const bufferCtx = bufferCanvas.getContext('2d');
-
-            let particles = Array.from({length: 50}, () => ({
-                x: Math.random() * 150,
-                y: Math.random() * 100,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
-                radius: Math.random() * 3 + 1
-            }));
-
-            function animate() {
-                // Clear buffer
-                bufferCtx.clearRect(0, 0, 150, 100);
-
-                // Update and draw particles to buffer
-                particles.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-
-                    if (p.x < 0 || p.x > 150) p.vx *= -1;
-                    if (p.y < 0 || p.y > 100) p.vy *= -1;
-
-                    bufferCtx.beginPath();
-                    bufferCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                    bufferCtx.fillStyle = 'rgba(0, 100, 255, 0.5)';
-                    bufferCtx.fill();
-                });
-
-                // Copy buffer to display
-                ctx.clearRect(0, 0, 150, 100);
-                ctx.drawImage(bufferCanvas, 0, 0);
-
-                animationIds['example3'] = requestAnimationFrame(animate);
-            }
-            animate();
-        }
-
-        function stopExample3() {
-            if (animationIds['example3']) {
-                cancelAnimationFrame(animationIds['example3']);
-                animationIds['example3'] = null;
-            }
-        }
-
-        // Example 4: Graph Visualization
-        function runExample4() {
-            stopAllAnimations();
-            const ctx = document.getElementById('canvas4').getContext('2d');
-
-            const nodes = [
-                {id: 0, x: 75, y: 30, vx: 0, vy: 0},
-                {id: 1, x: 30, y: 70, vx: 0, vy: 0},
-                {id: 2, x: 120, y: 70, vx: 0, vy: 0}
-            ];
-
-            const edges = [
-                {source: 0, target: 1},
-                {source: 0, target: 2},
-                {source: 1, target: 2}
-            ];
-
-            function animate() {
-                ctx.clearRect(0, 0, 150, 100);
-
-                // Draw edges
-                edges.forEach(edge => {
-                    const source = nodes[edge.source];
-                    const target = nodes[edge.target];
-                    ctx.beginPath();
-                    ctx.moveTo(source.x, source.y);
-                    ctx.lineTo(target.x, target.y);
-                    ctx.strokeStyle = '#aaa';
-                    ctx.stroke();
-                });
-
-                // Draw nodes
-                nodes.forEach(node => {
-                    ctx.beginPath();
-                    ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#246';
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
-                    ctx.stroke();
-                });
-
-                // Apply forces
-                nodes.forEach(node => {
-                    edges.forEach(edge => {
-                        if (edge.source === node.id || edge.target === node.id) {
-                            const other = nodes[edge.source === node.id ? edge.target : edge.source];
-                            const dx = other.x - node.x;
-                            const dy = other.y - node.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist > 50) {
-                                node.vx += dx * 0.01;
-                                node.vy += dy * 0.01;
-                            } else if (dist < 30) {
-                                node.vx -= dx * 0.01;
-                                node.vy -= dy * 0.01;
-                            }
-                        }
-                    });
-
-                    node.x += node.vx;
-                    node.y += node.vy;
-                    node.vx *= 0.9;
-                    node.vy *= 0.9;
-
-                    // Keep within bounds
-                    if (node.x < 10) { node.x = 10; node.vx *= -0.5; }
-                    if (node.x > 140) { node.x = 140; node.vx *= -0.5; }
-                    if (node.y < 10) { node.y = 10; node.vy *= -0.5; }
-                    if (node.y > 90) { node.y = 90; node.vy *= -0.5; }
-                });
-
-                animationIds['example4'] = requestAnimationFrame(animate);
-            }
-            animate();
-        }
-
-        function stopExample4() {
-            if (animationIds['example4']) {
-                cancelAnimationFrame(animationIds['example4']);
-                animationIds['example4'] = null;
-            }
-        }
-
-        // Clear all canvases on page load
-        window.addEventListener('load', function() {
-            const canvases = document.querySelectorAll('canvas');
-            canvases.forEach(canvas => {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            });
-        });
-
-        // Initialize Mermaid
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'default',
-            flowchart: {
-                curve: 'basis',
-                useMaxWidth: true
-            }
-        });
-
-        // Basic shapes example
-        function runBasicExample() {
-            const canvas = document.getElementById('canvas-basic');
-            const ctx = canvas.getContext('2d');
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Rectangle
-            ctx.fillStyle = '#246';
-            ctx.fillRect(50, 50, 60, 40);
-
-            // Circle
-            ctx.beginPath();
-            ctx.arc(150, 70, 25, 0, Math.PI * 2);
-            ctx.fillStyle = '#48c';
-            ctx.fill();
-
-            // Triangle
-            ctx.beginPath();
-            ctx.moveTo(200, 90);
-            ctx.lineTo(240, 40);
-            ctx.lineTo(240, 90);
-            ctx.closePath();
-            ctx.fillStyle = '#6ae';
-            ctx.fill();
-        }
-
-        function stopBasicExample() {
-            const canvas = document.getElementById('canvas-basic');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
