@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Dive into Canvas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
+    <style>
+        :root {
+            --primary-color: #246;
+            --secondary-color: #48c;
+            --background-color: #f8f9fa;
+            --code-background: #282a36;
+            --text-color: #333;
+            --section-spacing: 4rem;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: var(--background-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: var(--section-spacing);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        section {
+            margin-bottom: var(--section-spacing);
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: 2rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .canvas-example {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f1f3f5;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        canvas {
+            border: 2px solid var(--primary-color);
+            border-radius: 4px;
+            margin: 1rem 0;
+            display: block;
+            background: white;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem 1rem 0.5rem 0;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        pre {
+            background: var(--code-background);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: 'Fira Code', Consolas, Monaco, monospace;
+            font-size: 0.9rem;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .comparison > div {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .highlight {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .perf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+
+        .perf-table th,
+        .perf-table td {
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .perf-table th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .perf-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header {
+                padding: 2rem 0;
+            }
+
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Deep Dive into Canvas</h1>
+            <p>A comprehensive guide to Canvas rendering, optimization, and advanced techniques</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <section id="introduction">
+            <h2>Canvas Architecture</h2>
+            <h3>Immediate Mode Graphics</h3>
+            <ul>
+                <li>Each frame is drawn from scratch</li>
+                <li>No retained object model</li>
+                <li>Full control over rendering</li>
+            </ul>
+
+            <h3>Pixel-Based Rendering</h3>
+            <ul>
+                <li>Direct manipulation of pixels</li>
+                <li>No automatic reflow/repaint</li>
+                <li>High performance for complex graphics</li>
+            </ul>
+        </section>
+
+        <section id="comparison">
+            <h2>Canvas vs DOM: Core Differences</h2>
+            <div class="comparison">
+                <div>
+                    <h3>Canvas</h3>
+                    <ul>
+                        <li>Pixel-based</li>
+                        <li>Manual rendering</li>
+                        <li>Better for complex graphics</li>
+                        <li>No event handling on shapes</li>
+                        <li>Higher memory efficiency</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>DOM</h3>
+                    <ul>
+                        <li>Object-based</li>
+                        <li>Automatic rendering</li>
+                        <li>Better for UI elements</li>
+                        <li>Native event handling</li>
+                        <li>Higher CPU usage for animations</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="animation-comparison">
+            <h2>Animation Comparison</h2>
+            <pre><code class="language-javascript">// Canvas Animation
+ctx.clearRect(0, 0, width, height);
+ctx.fillRect(x++, y, 20, 20);
+
+// DOM Animation
+element.style.transform = `translateX(${x++}px)`;</code></pre>
+
+            <div class="canvas-example">
+                <div style="position: relative; height: 100px;">
+                    <canvas id="canvas1" width="150" height="100"></canvas>
+                    <div id="box1" style="width: 20px; height: 20px; background: red; position: absolute; top: 40px;"></div>
+                </div>
+                <button onclick="runExample1()">Run</button>
+                <button onclick="stopExample1()">Stop</button>
+            </div>
+        </section>
+
+        <section id="frame-control">
+            <h2>Frame Rate Control</h2>
+            <pre><code class="language-javascript">let lastTime = 0;
+const targetFPS = 30;
+const frameInterval = 1000 / targetFPS;
+
+function animate(currentTime) {
+    if (currentTime - lastTime >= frameInterval) {
+        // Update and render
+        lastTime = currentTime;
+    }
+    requestAnimationFrame(animate);
+}</code></pre>
+
+            <div class="canvas-example">
+                <canvas id="canvas2" width="150" height="100"></canvas>
+                <button onclick="runExample2()">Run</button>
+                <button onclick="stopExample2()">Stop</button>
+            </div>
+        </section>
+
+        <section id="double-buffering">
+            <h2>Double Buffering</h2>
+            <pre><code class="language-javascript">// Draw to buffer
+bufferCtx.clearRect(0, 0, width, height);
+bufferCtx.drawScene();
+
+// Copy to display
+ctx.drawImage(bufferCanvas, 0, 0);</code></pre>
+
+            <div class="canvas-example">
+                <canvas id="canvas3" width="150" height="100"></canvas>
+                <button onclick="runExample3()">Run</button>
+                <button onclick="stopExample3()">Stop</button>
+            </div>
+        </section>
+
+        <section id="graph-visualization">
+            <h2>Graph Visualization</h2>
+            <pre><code class="language-javascript">// Apply forces
+nodes.forEach(node => {
+    edges.forEach(edge => {
+        // Calculate spring forces
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Apply force
+        node.vx += dx * 0.01;
+        node.vy += dy * 0.01;
+    });
+
+    // Update position
+    node.x += node.vx;
+    node.y += node.vy;
+    node.vx *= 0.9; // damping
+});</code></pre>
+
+            <div class="canvas-example">
+                <canvas id="canvas4" width="150" height="100"></canvas>
+                <button onclick="runExample4()">Run</button>
+                <button onclick="stopExample4()">Stop</button>
+            </div>
+        </section>
+
+        <section id="performance">
+            <h2>Performance Optimization</h2>
+            <h3>Batch Operations</h3>
+            <ul>
+                <li>Group similar drawing operations</li>
+                <li>Minimize state changes</li>
+                <li>Use paths for multiple shapes</li>
+            </ul>
+
+            <h3>Memory Management</h3>
+            <ul>
+                <li>Reuse canvas objects</li>
+                <li>Clear unused references</li>
+                <li>Monitor memory usage</li>
+            </ul>
+
+            <h3>Rendering Strategies</h3>
+            <ul>
+                <li>Layer separation</li>
+                <li>Dirty region tracking</li>
+                <li>Object culling</li>
+            </ul>
+        </section>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script>
+        // Animation IDs for stopping animations
+        let animationIds = {};
+
+        // Helper function to stop all animations
+        function stopAllAnimations() {
+            for (let id in animationIds) {
+                if (animationIds[id]) {
+                    cancelAnimationFrame(animationIds[id]);
+                    animationIds[id] = null;
+                }
+            }
+        }
+
+        // Example 1: Canvas vs DOM Animation
+        function runExample1() {
+            stopAllAnimations();
+            // Canvas Animation
+            const ctx = document.getElementById('canvas1').getContext('2d');
+            let x = 0;
+
+            function animate() {
+                ctx.clearRect(0, 0, 150, 100);
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(x, 40, 20, 20);
+                x = (x + 2) % 130;
+                animationIds['example1'] = requestAnimationFrame(animate);
+            }
+            animate();
+
+            // DOM Animation
+            const box = document.getElementById('box1');
+            box.style.transition = 'none';
+            box.style.left = '0px';
+            setTimeout(() => {
+                box.style.transition = 'left 2s linear infinite';
+                box.style.left = '130px';
+            }, 0);
+        }
+
+        function stopExample1() {
+            if (animationIds['example1']) {
+                cancelAnimationFrame(animationIds['example1']);
+                animationIds['example1'] = null;
+            }
+            const box = document.getElementById('box1');
+            box.style.transition = 'none';
+            box.style.left = '0px';
+        }
+
+        // Example 2: Frame Rate Control
+        function runExample2() {
+            stopAllAnimations();
+            const ctx = document.getElementById('canvas2').getContext('2d');
+            let x = 0;
+            let lastTime = 0;
+            const targetFPS = 30;
+            const frameInterval = 1000 / targetFPS;
+
+            function animate(currentTime) {
+                if (!lastTime) lastTime = currentTime;
+                const deltaTime = currentTime - lastTime;
+
+                if (deltaTime >= frameInterval) {
+                    ctx.clearRect(0, 0, 150, 100);
+                    ctx.fillStyle = 'purple';
+                    ctx.fillRect(x, 40, 20, 20);
+                    x = (x + 4) % 130;
+                    lastTime = currentTime;
+                }
+
+                animationIds['example2'] = requestAnimationFrame(animate);
+            }
+            animate(0);
+        }
+
+        function stopExample2() {
+            if (animationIds['example2']) {
+                cancelAnimationFrame(animationIds['example2']);
+                animationIds['example2'] = null;
+            }
+        }
+
+        // Example 3: Double Buffering
+        function runExample3() {
+            stopAllAnimations();
+            const displayCanvas = document.getElementById('canvas3');
+            const ctx = displayCanvas.getContext('2d');
+            const bufferCanvas = document.createElement('canvas');
+            bufferCanvas.width = displayCanvas.width;
+            bufferCanvas.height = displayCanvas.height;
+            const bufferCtx = bufferCanvas.getContext('2d');
+
+            let particles = Array.from({length: 50}, () => ({
+                x: Math.random() * 150,
+                y: Math.random() * 100,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                radius: Math.random() * 3 + 1
+            }));
+
+            function animate() {
+                // Clear buffer
+                bufferCtx.clearRect(0, 0, 150, 100);
+
+                // Update and draw particles to buffer
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > 150) p.vx *= -1;
+                    if (p.y < 0 || p.y > 100) p.vy *= -1;
+
+                    bufferCtx.beginPath();
+                    bufferCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    bufferCtx.fillStyle = 'rgba(0, 100, 255, 0.5)';
+                    bufferCtx.fill();
+                });
+
+                // Copy buffer to display
+                ctx.clearRect(0, 0, 150, 100);
+                ctx.drawImage(bufferCanvas, 0, 0);
+
+                animationIds['example3'] = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function stopExample3() {
+            if (animationIds['example3']) {
+                cancelAnimationFrame(animationIds['example3']);
+                animationIds['example3'] = null;
+            }
+        }
+
+        // Example 4: Graph Visualization
+        function runExample4() {
+            stopAllAnimations();
+            const ctx = document.getElementById('canvas4').getContext('2d');
+
+            const nodes = [
+                {id: 0, x: 75, y: 30, vx: 0, vy: 0},
+                {id: 1, x: 30, y: 70, vx: 0, vy: 0},
+                {id: 2, x: 120, y: 70, vx: 0, vy: 0}
+            ];
+
+            const edges = [
+                {source: 0, target: 1},
+                {source: 0, target: 2},
+                {source: 1, target: 2}
+            ];
+
+            function animate() {
+                ctx.clearRect(0, 0, 150, 100);
+
+                // Draw edges
+                edges.forEach(edge => {
+                    const source = nodes[edge.source];
+                    const target = nodes[edge.target];
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.strokeStyle = '#aaa';
+                    ctx.stroke();
+                });
+
+                // Draw nodes
+                nodes.forEach(node => {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#246';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.stroke();
+                });
+
+                // Apply forces
+                nodes.forEach(node => {
+                    edges.forEach(edge => {
+                        if (edge.source === node.id || edge.target === node.id) {
+                            const other = nodes[edge.source === node.id ? edge.target : edge.source];
+                            const dx = other.x - node.x;
+                            const dy = other.y - node.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist > 50) {
+                                node.vx += dx * 0.01;
+                                node.vy += dy * 0.01;
+                            } else if (dist < 30) {
+                                node.vx -= dx * 0.01;
+                                node.vy -= dy * 0.01;
+                            }
+                        }
+                    });
+
+                    node.x += node.vx;
+                    node.y += node.vy;
+                    node.vx *= 0.9;
+                    node.vy *= 0.9;
+
+                    // Keep within bounds
+                    if (node.x < 10) { node.x = 10; node.vx *= -0.5; }
+                    if (node.x > 140) { node.x = 140; node.vx *= -0.5; }
+                    if (node.y < 10) { node.y = 10; node.vy *= -0.5; }
+                    if (node.y > 90) { node.y = 90; node.vy *= -0.5; }
+                });
+
+                animationIds['example4'] = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function stopExample4() {
+            if (animationIds['example4']) {
+                cancelAnimationFrame(animationIds['example4']);
+                animationIds['example4'] = null;
+            }
+        }
+
+        // Clear all canvases on page load
+        window.addEventListener('load', function() {
+            const canvases = document.querySelectorAll('canvas');
+            canvases.forEach(canvas => {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+        });
+    </script>
+</body>
+</html> 
