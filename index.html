@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deep Dive into Canvas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <style>
         :root {
             --primary-color: #246;
@@ -176,6 +177,57 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .mermaid {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .concept-definition {
+            background: #e9ecef;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .example-steps {
+            counter-reset: step;
+            list-style-type: none;
+            margin-left: 0;
+        }
+
+        .example-steps li {
+            position: relative;
+            padding-left: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .example-steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1.8rem;
+            height: 1.8rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .canvas-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
     </style>
 </head>
 <body>
@@ -187,155 +239,272 @@
     </header>
 
     <div class="container">
-        <section id="introduction">
-            <h2>Canvas Architecture</h2>
-            <h3>Immediate Mode Graphics</h3>
-            <ul>
-                <li>Each frame is drawn from scratch</li>
-                <li>No retained object model</li>
-                <li>Full control over rendering</li>
-            </ul>
+        <!-- 1. Canvas Fundamentals -->
+        <section id="fundamentals">
+            <h2>1. Canvas Fundamentals</h2>
 
-            <h3>Pixel-Based Rendering</h3>
-            <ul>
-                <li>Direct manipulation of pixels</li>
-                <li>No automatic reflow/repaint</li>
-                <li>High performance for complex graphics</li>
-            </ul>
+            <div class="concept-definition">
+                <h3>What is Canvas?</h3>
+                <p>The HTML Canvas API provides a means for drawing graphics via JavaScript. It's a low-level, procedural model that updates pixel by pixel.</p>
+            </div>
+
+            <h3>Key Concepts</h3>
+            <div class="canvas-container">
+                <div>
+                    <h4>Canvas Element</h4>
+                    <pre><code class="language-html">&lt;canvas width="300" height="200"&gt;&lt;/canvas&gt;</code></pre>
+                    <ul>
+                        <li>Resolution-dependent</li>
+                        <li>Requires width and height</li>
+                        <li>Fallback content support</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Rendering Context</h4>
+                    <pre><code class="language-javascript">const ctx = canvas.getContext('2d');</code></pre>
+                    <ul>
+                        <li>Drawing interface</li>
+                        <li>State-based API</li>
+                        <li>Immediate mode rendering</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Basic Drawing Operations</h3>
+            <div class="canvas-example">
+                <canvas id="canvas-basic" width="300" height="200"></canvas>
+                <button onclick="runBasicExample()">Draw Shapes</button>
+                <button onclick="stopBasicExample()">Clear</button>
+            </div>
+            <pre><code class="language-javascript">// Basic shapes
+ctx.fillStyle = 'blue';
+ctx.fillRect(x, y, width, height);    // Rectangle
+
+ctx.beginPath();                      // Start path
+ctx.arc(x, y, radius, 0, Math.PI*2);  // Circle
+ctx.fill();                          // Fill shape
+
+ctx.beginPath();                      // Triangle
+ctx.moveTo(x1, y1);
+ctx.lineTo(x2, y2);
+ctx.lineTo(x3, y3);
+ctx.closePath();
+ctx.fill();</code></pre>
         </section>
 
+        <!-- 2. Canvas Pipeline -->
+        <section id="pipeline">
+            <h2>2. Canvas Rendering Pipeline</h2>
+
+            <div class="concept-definition">
+                <h3>How Canvas Works</h3>
+                <p>Canvas uses an immediate mode rendering pipeline where drawing commands are executed sequentially and directly affect the pixel buffer.</p>
+            </div>
+
+            <div class="mermaid">
+                graph LR
+                    A[JavaScript Code] -->|Draw Commands| B[Command Queue]
+                    B -->|Execution| C[Canvas Context]
+                    C -->|Rasterization| D[Backing Store]
+                    D -->|Composition| E[Display Buffer]
+                    E -->|VSync| F[Screen]
+                    style A fill:#246,color:#fff
+                    style F fill:#48c,color:#fff
+            </div>
+
+            <h3>Pipeline Stages</h3>
+            <ol class="example-steps">
+                <li><strong>Command Queue:</strong> JavaScript drawing commands are collected</li>
+                <li><strong>Context Processing:</strong> Commands are processed by the 2D context</li>
+                <li><strong>Rasterization:</strong> Vector operations are converted to pixels</li>
+                <li><strong>Backing Store:</strong> Pixels are stored in memory</li>
+                <li><strong>Composition:</strong> Final image is composed with other elements</li>
+                <li><strong>Display:</strong> Image is shown on screen</li>
+            </ol>
+        </section>
+
+        <!-- 3. Canvas vs DOM -->
         <section id="comparison">
-            <h2>Canvas vs DOM: Core Differences</h2>
+            <h2>3. Canvas vs DOM Comparison</h2>
+
+            <div class="concept-definition">
+                <h3>When to Use Canvas vs DOM?</h3>
+                <p>Choose Canvas for complex graphics and animations, DOM for interactive UI elements and simple animations.</p>
+            </div>
+
             <div class="comparison">
                 <div>
                     <h3>Canvas</h3>
                     <ul>
-                        <li>Pixel-based</li>
-                        <li>Manual rendering</li>
-                        <li>Better for complex graphics</li>
-                        <li>No event handling on shapes</li>
-                        <li>Higher memory efficiency</li>
+                        <li>✅ High performance for complex graphics</li>
+                        <li>✅ Better memory management</li>
+                        <li>✅ Pixel-level control</li>
+                        <li>❌ No built-in event handling</li>
+                        <li>❌ Manual rendering required</li>
                     </ul>
                 </div>
                 <div>
                     <h3>DOM</h3>
                     <ul>
-                        <li>Object-based</li>
-                        <li>Automatic rendering</li>
-                        <li>Better for UI elements</li>
-                        <li>Native event handling</li>
-                        <li>Higher CPU usage for animations</li>
+                        <li>✅ Built-in event handling</li>
+                        <li>✅ Automatic layout</li>
+                        <li>✅ Better accessibility</li>
+                        <li>❌ Performance issues with many elements</li>
+                        <li>❌ Limited visual effects</li>
                     </ul>
                 </div>
             </div>
-        </section>
 
-        <section id="animation-comparison">
-            <h2>Animation Comparison</h2>
-            <pre><code class="language-javascript">// Canvas Animation
-ctx.clearRect(0, 0, width, height);
-ctx.fillRect(x++, y, 20, 20);
-
-// DOM Animation
-element.style.transform = `translateX(${x++}px)`;</code></pre>
-
+            <h3>Side-by-Side Animation Example</h3>
             <div class="canvas-example">
                 <div style="position: relative; height: 100px;">
                     <canvas id="canvas1" width="150" height="100"></canvas>
                     <div id="box1" style="width: 20px; height: 20px; background: red; position: absolute; top: 40px;"></div>
                 </div>
-                <button onclick="runExample1()">Run</button>
+                <button onclick="runExample1()">Compare Animations</button>
                 <button onclick="stopExample1()">Stop</button>
             </div>
         </section>
 
-        <section id="frame-control">
-            <h2>Frame Rate Control</h2>
-            <pre><code class="language-javascript">let lastTime = 0;
-const targetFPS = 30;
-const frameInterval = 1000 / targetFPS;
+        <!-- 4. Basic Animations -->
+        <section id="basic-animations">
+            <h2>4. Basic Animations</h2>
 
-function animate(currentTime) {
-    if (currentTime - lastTime >= frameInterval) {
-        // Update and render
-        lastTime = currentTime;
-    }
-    requestAnimationFrame(animate);
-}</code></pre>
-
-            <div class="canvas-example">
-                <canvas id="canvas2" width="150" height="100"></canvas>
-                <button onclick="runExample2()">Run</button>
-                <button onclick="stopExample2()">Stop</button>
+            <div class="concept-definition">
+                <h3>Animation Principles</h3>
+                <p>Canvas animations work by repeatedly clearing and redrawing the canvas with updated positions or states.</p>
             </div>
-        </section>
 
-        <section id="double-buffering">
-            <h2>Double Buffering</h2>
-            <pre><code class="language-javascript">// Draw to buffer
-bufferCtx.clearRect(0, 0, width, height);
-bufferCtx.drawScene();
-
-// Copy to display
-ctx.drawImage(bufferCanvas, 0, 0);</code></pre>
-
+            <h3>Simple Motion Animation</h3>
             <div class="canvas-example">
-                <canvas id="canvas3" width="150" height="100"></canvas>
-                <button onclick="runExample3()">Run</button>
-                <button onclick="stopExample3()">Stop</button>
+                <canvas id="canvas-motion" width="300" height="200"></canvas>
+                <button onclick="runMotionExample()">Run Motion</button>
+                <button onclick="stopMotionExample()">Stop</button>
             </div>
-        </section>
-
-        <section id="graph-visualization">
-            <h2>Graph Visualization</h2>
-            <pre><code class="language-javascript">// Apply forces
-nodes.forEach(node => {
-    edges.forEach(edge => {
-        // Calculate spring forces
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // Apply force
-        node.vx += dx * 0.01;
-        node.vy += dy * 0.01;
-    });
+            <pre><code class="language-javascript">function animate() {
+    // Clear previous frame
+    ctx.clearRect(0, 0, width, height);
 
     // Update position
-    node.x += node.vx;
-    node.y += node.vy;
-    node.vx *= 0.9; // damping
-});</code></pre>
+    x += speed;
 
-            <div class="canvas-example">
-                <canvas id="canvas4" width="150" height="100"></canvas>
-                <button onclick="runExample4()">Run</button>
-                <button onclick="stopExample4()">Stop</button>
+    // Draw at new position
+    ctx.fillRect(x, y, width, height);
+
+    // Request next frame
+    requestAnimationFrame(animate);
+}</code></pre>
+        </section>
+
+        <!-- 5. Time-based Animations -->
+        <section id="time-based">
+            <h2>5. Time-based Animations</h2>
+
+            <div class="concept-definition">
+                <h3>Frame-based vs Time-based</h3>
+                <p>Time-based animations ensure consistent speed regardless of frame rate, while frame-based animations can vary with device performance.</p>
+            </div>
+
+            <div class="mermaid">
+                graph TD
+                    A[requestAnimationFrame] -->|timestamp| B[Calculate Delta Time]
+                    B -->|elapsed > interval| C{Update Required?}
+                    C -->|Yes| D[Update Animation]
+                    C -->|No| E[Skip Frame]
+                    D --> F[Draw Frame]
+                    E --> F
+                    F --> A
+            </div>
+
+            <h3>Comparison Example</h3>
+            <div class="canvas-container">
+                <div>
+                    <h4>Frame-based (Bad)</h4>
+                    <canvas id="frame-based" width="300" height="100"></canvas>
+                    <button onclick="runFrameBasedExample()">Run</button>
+                    <button onclick="stopFrameBasedExample()">Stop</button>
+                    <pre><code class="language-javascript">x += speed; // Changes per frame</code></pre>
+                </div>
+                <div>
+                    <h4>Time-based (Good)</h4>
+                    <canvas id="time-based" width="300" height="100"></canvas>
+                    <button onclick="runTimeBasedExample()">Run</button>
+                    <button onclick="stopTimeBasedExample()">Stop</button>
+                    <pre><code class="language-javascript">x += speed * deltaTime; // Changes per second</code></pre>
+                </div>
             </div>
         </section>
 
+        <!-- 6. Performance Optimization -->
         <section id="performance">
-            <h2>Performance Optimization</h2>
-            <h3>Batch Operations</h3>
-            <ul>
-                <li>Group similar drawing operations</li>
-                <li>Minimize state changes</li>
-                <li>Use paths for multiple shapes</li>
-            </ul>
+            <h2>6. Performance Optimization</h2>
 
-            <h3>Memory Management</h3>
-            <ul>
-                <li>Reuse canvas objects</li>
-                <li>Clear unused references</li>
-                <li>Monitor memory usage</li>
-            </ul>
+            <div class="concept-definition">
+                <h3>Common Performance Issues</h3>
+                <p>Canvas performance is mainly affected by the number of draw calls, canvas size, and unnecessary state changes.</p>
+            </div>
 
-            <h3>Rendering Strategies</h3>
-            <ul>
-                <li>Layer separation</li>
-                <li>Dirty region tracking</li>
-                <li>Object culling</li>
-            </ul>
+            <h3>Bad vs Good Practices</h3>
+            <div class="comparison">
+                <div>
+                    <h4>❌ Bad Practice</h4>
+                    <pre><code class="language-javascript">// Multiple state changes
+shapes.forEach(shape => {
+    ctx.fillStyle = shape.color;
+    ctx.beginPath();
+    ctx.arc(shape.x, shape.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+});</code></pre>
+                </div>
+                <div>
+                    <h4>✅ Good Practice</h4>
+                    <pre><code class="language-javascript">// Group by color
+const byColor = shapes.reduce((acc, shape) => {
+    (acc[shape.color] = acc[shape.color] || []).push(shape);
+    return acc;
+}, {});
+
+// Draw shapes grouped by color
+Object.entries(byColor).forEach(([color, shapes]) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    shapes.forEach(shape => {
+        ctx.arc(shape.x, shape.y, 5, 0, Math.PI * 2);
+    });
+    ctx.fill();
+});</code></pre>
+                </div>
+            </div>
+
+            <h3>Performance Example</h3>
+            <div class="canvas-example">
+                <div class="canvas-container">
+                    <div>
+                        <h4>Unoptimized (1000 particles)</h4>
+                        <canvas id="unoptimized" width="300" height="200"></canvas>
+                        <button onclick="runUnoptimizedExample()">Run</button>
+                        <button onclick="stopUnoptimizedExample()">Stop</button>
+                        <div id="unoptimized-fps"></div>
+                    </div>
+                    <div>
+                        <h4>Optimized (1000 particles)</h4>
+                        <canvas id="optimized" width="300" height="200"></canvas>
+                        <button onclick="runOptimizedExample()">Run</button>
+                        <button onclick="stopOptimizedExample()">Stop</button>
+                        <div id="optimized-fps"></div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Optimization Techniques</h3>
+            <ol class="example-steps">
+                <li><strong>Batch Similar Operations:</strong> Group shapes by color/style</li>
+                <li><strong>Minimize State Changes:</strong> Cache and reuse styles</li>
+                <li><strong>Use Multiple Layers:</strong> Separate static and dynamic content</li>
+                <li><strong>Optimize Canvas Size:</strong> Match display size</li>
+                <li><strong>Object Pooling:</strong> Reuse objects instead of creating new ones</li>
+                <li><strong>Off-screen Rendering:</strong> Use buffer canvas for complex scenes</li>
+            </ol>
         </section>
     </div>
 
@@ -567,6 +736,50 @@ nodes.forEach(node => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             });
         });
+
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                curve: 'basis',
+                useMaxWidth: true
+            }
+        });
+
+        // Basic shapes example
+        function runBasicExample() {
+            const canvas = document.getElementById('canvas-basic');
+            const ctx = canvas.getContext('2d');
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Rectangle
+            ctx.fillStyle = '#246';
+            ctx.fillRect(50, 50, 60, 40);
+
+            // Circle
+            ctx.beginPath();
+            ctx.arc(150, 70, 25, 0, Math.PI * 2);
+            ctx.fillStyle = '#48c';
+            ctx.fill();
+
+            // Triangle
+            ctx.beginPath();
+            ctx.moveTo(200, 90);
+            ctx.lineTo(240, 40);
+            ctx.lineTo(240, 90);
+            ctx.closePath();
+            ctx.fillStyle = '#6ae';
+            ctx.fill();
+        }
+
+        function stopBasicExample() {
+            const canvas = document.getElementById('canvas-basic');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     </script>
 </body>
-</html> 
+</html>
