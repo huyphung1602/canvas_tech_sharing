@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Table Example - 100,000 Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .table-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f2f2f2;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+        }
+        
+        .warning {
+            background-color: #ffebee;
+            border: 1px solid #f44336;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #d32f2f;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOM Table Example - 100,000 Records</h1>
+        <p>This example shows a table with 100,000 records rendered using traditional DOM elements.</p>
+        
+        <div class="warning">
+            <strong>⚠️ WARNING:</strong> Rendering 100,000 DOM elements may cause your browser to slow down significantly. 
+            This example is intended to demonstrate why DOM is not suitable for large datasets.
+            Proceed at your own risk and be prepared for your browser to become unresponsive.
+        </div>
+        
+        <button id="load-button">Load 100,000 Records (Warning: May Slow Down Browser)</button>
+        
+        <div class="table-container">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Salary</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr>
+                        <td colspan="5" class="loading">Click the button above to load 100,000 records...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="stats" id="stats">
+            <p><strong>Performance Metrics:</strong></p>
+            <p>Time to render: <span id="render-time">-</span> ms</p>
+            <p>Memory usage: Will vary (typically very high for DOM with 100K records)</p>
+            <p>Scroll performance: Test by scrolling through the table (will likely be jerky)</p>
+        </div>
+    </div>
+
+    <script>
+        // Generate random data
+        function generateRandomData(count) {
+            const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Product', 'Design'];
+            const data = [];
+            
+            for (let i = 1; i <= count; i++) {
+                const firstName = `FirstName${i}`;
+                const lastName = `LastName${i}`;
+                const email = `user${i}@example.com`;
+                const department = departments[Math.floor(Math.random() * departments.length)];
+                const salary = Math.floor(50000 + Math.random() * 100000);
+                
+                data.push({
+                    id: i,
+                    name: `${firstName} ${lastName}`,
+                    email,
+                    department,
+                    salary: `$${salary.toLocaleString()}`
+                });
+            }
+            
+            return data;
+        }
+        
+        // Render table using DOM
+        function renderTable() {
+            const startTime = performance.now();
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '<tr><td colspan="5" class="loading">Generating 100,000 records... (This may take a while)</td></tr>';
+            
+            // Use setTimeout to allow the loading message to render
+            setTimeout(() => {
+                const data = generateRandomData(100000);
+                tableBody.innerHTML = ''; // Clear loading message
+                
+                // Add rows in batches to prevent UI freezing for too long
+                function addRowsBatch(startIdx, endIdx) {
+                    // Create a document fragment for better performance
+                    const fragment = document.createDocumentFragment();
+                    
+                    for (let i = startIdx; i < endIdx; i++) {
+                        const item = data[i];
+                        const row = document.createElement('tr');
+                        
+                        const idCell = document.createElement('td');
+                        idCell.textContent = item.id;
+                        row.appendChild(idCell);
+                        
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = item.name;
+                        row.appendChild(nameCell);
+                        
+                        const emailCell = document.createElement('td');
+                        emailCell.textContent = item.email;
+                        row.appendChild(emailCell);
+                        
+                        const deptCell = document.createElement('td');
+                        deptCell.textContent = item.department;
+                        row.appendChild(deptCell);
+                        
+                        const salaryCell = document.createElement('td');
+                        salaryCell.textContent = item.salary;
+                        row.appendChild(salaryCell);
+                        
+                        fragment.appendChild(row);
+                    }
+                    
+                    tableBody.appendChild(fragment);
+                    
+                    // If we have more rows to add, schedule the next batch
+                    if (endIdx < data.length) {
+                        const nextStart = endIdx;
+                        const nextEnd = Math.min(nextStart + 1000, data.length);
+                        setTimeout(() => addRowsBatch(nextStart, nextEnd), 10);
+                    } else {
+                        // All done
+                        const endTime = performance.now();
+                        document.getElementById('render-time').textContent = (endTime - startTime).toFixed(2);
+                    }
+                }
+                
+                // Start adding rows in batches of 1000
+                addRowsBatch(0, Math.min(1000, data.length));
+            }, 100);
+        }
+        
+        // Add event listener to button
+        document.getElementById('load-button').addEventListener('click', () => {
+            if (confirm('WARNING: This will attempt to create 500,000 DOM elements (100,000 rows × 5 cells) which may cause your browser to become unresponsive. Are you sure you want to continue?')) {
+                renderTable();
+            }
+        });
+    </script>
+</body>
+</html> 
