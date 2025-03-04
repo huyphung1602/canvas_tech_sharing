@@ -38,3 +38,48 @@ button:active {
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+.icon-button:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.icon-button:active {
+    transform: scale(0.95);
+}
+
+.icon-button img {
+    width: 24px;
+    height: 24px;
+    filter: invert(0.4); /* Makes the icons a dark gray color */
+}
+
+/* Dark background variant */
+#game-container1 .icon-button {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#game-container1 .icon-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#game-container1 .icon-button img {
+    filter: invert(1); /* Makes the icons white for dark background */
+}

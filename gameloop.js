@@ -56,9 +56,9 @@ function resizeCanvas() {
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     
-    // Reposition player when canvas is resized
+    // Center the player both horizontally and vertically
     player.x = CANVAS_WIDTH / 2 - player.width / 2;
-    player.y = CANVAS_HEIGHT - player.height - 10;
+    player.y = CANVAS_HEIGHT / 2 - player.height / 2;
 }
 
 // Input handling
