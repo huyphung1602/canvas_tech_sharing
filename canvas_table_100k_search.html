@@ -10,39 +10,39 @@
             margin: 0;
             padding: 20px;
         }
-        
+
         h1 {
             color: #333;
         }
-        
+
         .container {
             display: flex;
             flex-direction: column;
             max-width: 1000px;
             margin: 0 auto;
         }
-        
+
         .table-container {
             height: 500px;
             width: 100%;
             position: relative;
             border: 1px solid #ccc;
         }
-        
+
         #table-canvas {
             display: block;
             position: absolute;
             top: 0;
             left: 0;
         }
-        
+
         .stats {
             margin-top: 20px;
             padding: 10px;
             background-color: #f2f2f2;
             border-radius: 4px;
         }
-        
+
         .loading {
             text-align: center;
             padding: 20px;
@@ -52,7 +52,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-        
+
         .progress-container {
             width: 80%;
             height: 20px;
@@ -61,7 +61,7 @@
             margin: 0 auto;
             margin-top: 10px;
         }
-        
+
         .progress-bar {
             height: 100%;
             width: 0;
@@ -69,7 +69,7 @@
             border-radius: 5px;
             transition: width 0.2s;
         }
-        
+
         .scrollbar {
             position: absolute;
             right: 0;
@@ -78,7 +78,7 @@
             height: calc(100% - 50px);
             background-color: #f1f1f1;
         }
-        
+
         .scrollbar-thumb {
             position: absolute;
             width: 10px;
@@ -86,11 +86,11 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        
+
         .scrollbar-thumb:hover {
             background-color: #555;
         }
-        
+
         .fps-counter {
             position: absolute;
             top: 5px;
@@ -101,7 +101,7 @@
             border-radius: 3px;
             font-size: 12px;
         }
-        
+
         .controls {
             margin-bottom: 15px;
             padding: 10px;
@@ -109,7 +109,7 @@
             border-radius: 4px;
             border: 1px solid #ddd;
         }
-        
+
         .controls button {
             background-color: #4CAF50;
             color: white;
@@ -119,11 +119,11 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        
+
         .controls button:hover {
             background-color: #45a049;
         }
-        
+
         .search-container {
             margin-bottom: 15px;
             padding: 15px;
@@ -131,38 +131,38 @@
             border-radius: 4px;
             border: 1px solid #ddd;
         }
-        
+
         .search-fields {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 10px;
         }
-        
+
         .search-field {
             display: flex;
             flex-direction: column;
         }
-        
+
         .search-field label {
             font-size: 12px;
             margin-bottom: 3px;
             color: #555;
         }
-        
+
         .search-field input {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             width: 150px;
         }
-        
+
         .search-actions {
             display: flex;
             gap: 10px;
             margin-top: 10px;
         }
-        
+
         .search-results {
             font-weight: bold;
             margin-top: 10px;
@@ -170,7 +170,7 @@
             background-color: #e8f5e9;
             border-radius: 4px;
         }
-        
+
         .no-results-overlay {
             position: absolute;
             top: 50%;
@@ -190,7 +190,7 @@
     <div class="container">
         <h1>Canvas Table Example - 100,000 Records with Search</h1>
         <p>This example shows a table with 100,000 records rendered using HTML5 Canvas with search functionality.</p>
-        
+
         <div class="search-container">
             <h3>Search Records</h3>
             <div class="search-fields">
@@ -223,12 +223,12 @@
                 Showing all 100,000 records
             </div>
         </div>
-        
+
         <div class="controls">
             <button id="btn-scroll-test">Run Scroll Test</button>
             <span id="scroll-test-result"></span>
         </div>
-        
+
         <div class="table-container" id="canvas-container">
             <canvas id="table-canvas"></canvas>
             <div id="loading-message" class="loading">
@@ -245,7 +245,7 @@
                 No matching records found
             </div>
         </div>
-        
+
         <div class="stats" id="stats">
             <p><strong>Performance Metrics:</strong></p>
             <p>Data generation time: <span id="data-time">-</span> ms</p>
@@ -277,19 +277,19 @@
             batchSize: 10000, // Generate data in batches to avoid UI freeze
             currentBatch: 0
         };
-        
+
         // Calculate total width
         config.totalWidth = config.columns.reduce((total, col) => total + col.width, 0);
-        
+
         // Table data (will hold 100,000 records)
         let tableData = [];
         let filteredData = [];
         let isFiltering = false;
-        
+
         // Canvas and context
         let canvas;
         let ctx;
-        
+
         // DOM elements
         let container;
         let scrollbarThumb;
@@ -298,7 +298,7 @@
         let searchResultsDiv;
         let isScrolling = false;
         let lastY = 0;
-        
+
         // Search elements
         const searchInputs = {
             id: document.getElementById('search-id'),
@@ -307,42 +307,42 @@
             department: document.getElementById('search-department'),
             salary: document.getElementById('search-salary')
         };
-        
+
         // FPS counter
         let fpsCounter = document.getElementById('fps-counter');
         let frameCount = 0;
         let lastTime = performance.now();
         let fps = 0;
-        
+
         function updateFPS() {
             const now = performance.now();
             const elapsed = now - lastTime;
-            
+
             if (elapsed >= 1000) {
                 fps = Math.round((frameCount * 1000) / elapsed);
                 fpsCounter.textContent = `FPS: ${fps}`;
                 frameCount = 0;
                 lastTime = now;
             }
-            
+
             frameCount++;
             requestAnimationFrame(updateFPS);
         }
-        
+
         // Generate random data in batches
         function generateRandomDataBatch(startIndex, batchSize) {
             const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Product', 'Design'];
             const batch = [];
-            
+
             const endIndex = Math.min(startIndex + batchSize, config.totalRows);
-            
+
             for (let i = startIndex + 1; i <= endIndex; i++) {
                 const firstName = `FirstName${i}`;
                 const lastName = `LastName${i}`;
                 const email = `user${i}@example.com`;
                 const department = departments[Math.floor(Math.random() * departments.length)];
                 const salary = Math.floor(50000 + Math.random() * 100000);
-                
+
                 batch.push({
                     id: i,
                     name: `${firstName} ${lastName}`,
@@ -351,10 +351,10 @@
                     salary: `$${salary.toLocaleString()}`
                 });
             }
-            
+
             return batch;
         }
-        
+
         // Initialize canvas
         function initCanvas() {
             container = document.getElementById('canvas-container');
@@ -363,31 +363,31 @@
             scrollbarTrack = document.getElementById('scrollbar');
             noResultsOverlay = document.getElementById('no-results');
             searchResultsDiv = document.getElementById('search-results');
-            
+
             // Set canvas dimensions to match container
             canvas.width = container.clientWidth - 10; // Account for scrollbar width
             canvas.height = container.clientHeight;
-            
+
             // Get drawing context
             ctx = canvas.getContext('2d');
-            
+
             // Calculate visible rows
             config.visibleRows = Math.ceil(canvas.height / config.rowHeight);
             document.getElementById('visible-rows').textContent = config.visibleRows;
-            
+
             // Handle scroll events
             container.addEventListener('wheel', handleWheel);
-            
+
             // Handle scrollbar events
             scrollbarThumb.addEventListener('mousedown', startScrolling);
             document.addEventListener('mousemove', moveScrollbar);
             document.addEventListener('mouseup', stopScrolling);
             scrollbarTrack.addEventListener('click', jumpToPosition);
-            
+
             // Set up search buttons
             document.getElementById('search-button').addEventListener('click', performSearch);
             document.getElementById('reset-button').addEventListener('click', resetSearch);
-            
+
             // Add input event listeners for pressing Enter
             Object.values(searchInputs).forEach(input => {
                 input.addEventListener('keyup', event => {
@@ -396,10 +396,10 @@
                     }
                 });
             });
-            
+
             // Set up scroll test button
             document.getElementById('btn-scroll-test').addEventListener('click', runScrollTest);
-            
+
             // Handle window resize
             window.addEventListener('resize', () => {
                 canvas.width = container.clientWidth - 10;
@@ -409,18 +409,18 @@
                 updateScrollbarThumb();
                 renderTable();
             });
-            
+
             // Start FPS counter
             updateFPS();
-            
+
             // Initialize with all data
             filteredData = [...tableData];
         }
-        
+
         // Perform search on table data
         function performSearch() {
             const startTime = performance.now();
-            
+
             const searchCriteria = {
                 id: searchInputs.id.value.toLowerCase(),
                 name: searchInputs.name.value.toLowerCase(),
@@ -428,17 +428,17 @@
                 department: searchInputs.department.value.toLowerCase(),
                 salary: searchInputs.salary.value.toLowerCase()
             };
-            
+
             // Check if any criteria is specified
             const isSearching = Object.values(searchCriteria).some(value => value.trim() !== '');
-            
+
             if (!isSearching) {
                 filteredData = [...tableData];
                 updateSearchResults(tableData.length);
                 document.getElementById('search-time').textContent = (performance.now() - startTime).toFixed(2);
                 return;
             }
-            
+
             // Filter the data
             filteredData = tableData.filter(item => {
                 return (!searchCriteria.id || String(item.id).toLowerCase().includes(searchCriteria.id)) &&
@@ -447,25 +447,25 @@
                        (!searchCriteria.department || item.department.toLowerCase().includes(searchCriteria.department)) &&
                        (!searchCriteria.salary || item.salary.toLowerCase().includes(searchCriteria.salary));
             });
-            
+
             // Update UI with results
             updateSearchResults(filteredData.length);
-            
+
             // Reset scroll position to top
             config.scrollY = 0;
             updateScrollbarThumb();
-            
+
             // Update the search time
             document.getElementById('search-time').textContent = (performance.now() - startTime).toFixed(2);
-            
+
             // Render the table with filtered data
             renderTable();
         }
-        
+
         // Update search results UI
         function updateSearchResults(count) {
             document.getElementById('filtered-count').textContent = count.toLocaleString();
-            
+
             if (count === 0) {
                 noResultsOverlay.style.display = 'block';
                 searchResultsDiv.textContent = 'No matching records found';
@@ -477,38 +477,38 @@
                 searchResultsDiv.textContent = `Found ${count.toLocaleString()} matching records`;
             }
         }
-        
+
         // Reset search
         function resetSearch() {
             // Clear all search inputs
             Object.values(searchInputs).forEach(input => {
                 input.value = '';
             });
-            
+
             // Reset filtered data to all data
             filteredData = [...tableData];
-            
+
             // Update UI
             updateSearchResults(tableData.length);
-            
+
             // Reset scroll position
             config.scrollY = 0;
             updateScrollbarThumb();
-            
+
             // Render table with all data
             renderTable();
         }
-        
+
         // Run a scroll performance test
         function runScrollTest() {
             const resultEl = document.getElementById('scroll-test-result');
             resultEl.textContent = 'Running test...';
-            
+
             // Start at the top
             config.scrollY = 0;
             updateScrollbarThumb();
             renderTable();
-            
+
             // Wait a bit and then start the test
             setTimeout(() => {
                 let framesTested = 0;
@@ -516,47 +516,47 @@
                 let totalScrolled = 0;
                 const testDuration = 2000; // 2 seconds
                 const startTime = performance.now();
-                
+
                 function scrollStep() {
                     const currentTime = performance.now();
                     const elapsedTime = currentTime - startTime;
-                    
+
                     if (elapsedTime < testDuration) {
                         // Scroll down by a consistent amount
                         const scrollAmount = 100;
                         config.scrollY += scrollAmount;
                         totalScrolled += scrollAmount;
-                        
+
                         // Clamp scroll position
                         clampScrollPosition();
                         updateScrollbarThumb();
-                        
+
                         // Render and measure frame
                         const frameStart = performance.now();
                         renderTable();
                         const frameEnd = performance.now();
-                        
+
                         // Calculate FPS for this frame
                         const frameFps = 1000 / (frameEnd - frameStart);
                         totalFps += frameFps;
                         framesTested++;
-                        
+
                         // Schedule next step
                         requestAnimationFrame(scrollStep);
                     } else {
                         // Test complete
                         const avgFps = totalFps / framesTested;
                         const rowsScrolled = Math.floor(totalScrolled / config.rowHeight);
-                        
+
                         resultEl.textContent = `Result: Average ${avgFps.toFixed(1)} FPS while scrolling through ${rowsScrolled} rows`;
                     }
                 }
-                
+
                 // Start the test
                 scrollStep();
             }, 500);
         }
-        
+
         // Scrollbar handling
         function updateScrollbarThumb() {
             // If no data or filtered data to show, just hide the scrollbar
@@ -566,106 +566,106 @@
             } else {
                 scrollbarThumb.style.display = 'block';
             }
-            
+
             const totalHeight = filteredData.length * config.rowHeight;
             const viewportRatio = Math.min(1, (canvas.height - config.headerHeight) / totalHeight);
             const thumbHeight = Math.max(30, viewportRatio * (scrollbarTrack.clientHeight));
-            
+
             scrollbarThumb.style.height = thumbHeight + 'px';
-            
+
             // Position thumb based on scroll position
             const maxScroll = totalHeight - (canvas.height - config.headerHeight);
             if (maxScroll <= 0) {
                 scrollbarThumb.style.top = '0px';
                 return;
             }
-            
+
             const scrollRatio = config.scrollY / maxScroll;
             const trackScrollableHeight = scrollbarTrack.clientHeight - thumbHeight;
             const thumbTop = scrollRatio * trackScrollableHeight;
-            
+
             scrollbarThumb.style.top = thumbTop + 'px';
         }
-        
+
         function startScrolling(e) {
             isScrolling = true;
             lastY = e.clientY;
             scrollbarThumb.style.backgroundColor = '#555';
             e.preventDefault();
         }
-        
+
         function moveScrollbar(e) {
             if (!isScrolling) return;
-            
+
             const deltaY = e.clientY - lastY;
             lastY = e.clientY;
-            
+
             const totalHeight = filteredData.length * config.rowHeight;
             const trackHeight = scrollbarTrack.clientHeight - scrollbarThumb.clientHeight;
             const moveRatio = deltaY / trackHeight;
-            
+
             const scrollAmount = moveRatio * (totalHeight - (canvas.height - config.headerHeight));
-            
+
             // Update scroll position
             config.scrollY += scrollAmount;
             clampScrollPosition();
             updateScrollbarThumb();
             renderTable();
-            
+
             e.preventDefault();
         }
-        
+
         function stopScrolling() {
             isScrolling = false;
             scrollbarThumb.style.backgroundColor = '#888';
         }
-        
+
         function jumpToPosition(e) {
             // Don't do anything if clicking on the thumb itself
             if (e.target === scrollbarThumb) return;
-            
+
             const rect = scrollbarTrack.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
-            
+
             const thumbHeight = parseFloat(scrollbarThumb.style.height || '30');
             const trackHeight = scrollbarTrack.clientHeight;
-            
+
             const totalHeight = filteredData.length * config.rowHeight;
             const scrollableHeight = totalHeight - (canvas.height - config.headerHeight);
-            
+
             // If there's nothing to scroll, do nothing
             if (scrollableHeight <= 0) return;
-            
+
             // Calculate the new scroll position
             let newThumbTop = clickY - (thumbHeight / 2);
             newThumbTop = Math.max(0, Math.min(trackHeight - thumbHeight, newThumbTop));
-            
+
             const scrollRatio = newThumbTop / (trackHeight - thumbHeight);
             config.scrollY = scrollRatio * scrollableHeight;
-            
+
             updateScrollbarThumb();
             renderTable();
         }
-        
+
         // Handle wheel event
         function handleWheel(e) {
             e.preventDefault();
-            
+
             // Update scroll position
             config.scrollY += e.deltaY * 2;
             clampScrollPosition();
             updateScrollbarThumb();
-            
+
             // Render with new scroll position
             renderTable();
         }
-        
+
         // Clamp scroll position to valid range
         function clampScrollPosition() {
             const maxScroll = (filteredData.length * config.rowHeight) - (canvas.height - config.headerHeight);
             config.scrollY = Math.max(0, Math.min(config.scrollY, maxScroll));
         }
-        
+
         // Render table to canvas
         function renderTable() {
             // Clear canvas
@@ -679,6 +679,14 @@
                 return;
             }
             
+            // Save the current context state
+            ctx.save();
+            
+            // Create a clipping region below the header to prevent rows from overlapping it
+            ctx.beginPath();
+            ctx.rect(0, config.headerHeight, canvas.width, canvas.height - config.headerHeight);
+            ctx.clip();
+            
             // Calculate start and end rows based on scroll position
             const startRow = Math.floor(config.scrollY / config.rowHeight);
             const endRow = Math.min(startRow + config.visibleRows + 1, filteredData.length);
@@ -687,10 +695,16 @@
             for (let i = startRow; i < endRow; i++) {
                 drawTableRow(i, filteredData[i]);
             }
+            
+            // Restore the context state
+            ctx.restore();
         }
         
         // Draw table header
         function drawTableHeader() {
+            // Clear just the header area to ensure it's always clean
+            ctx.clearRect(0, 0, canvas.width, config.headerHeight);
+            
             ctx.fillStyle = '#f2f2f2';
             ctx.fillRect(0, 0, canvas.width, config.headerHeight);
             
@@ -727,8 +741,8 @@
         function drawTableRow(rowIndex, rowData) {
             const y = (rowIndex * config.rowHeight) - config.scrollY + config.headerHeight;
             
-            // Skip rows outside visible area
-            if (y + config.rowHeight < 0 || y > canvas.height) {
+            // Skip rows completely outside visible area or rows that would overlap the header
+            if (y + config.rowHeight < config.headerHeight || y > canvas.height) {
                 return;
             }
             
@@ -776,71 +790,71 @@
             ctx.strokeStyle = '#ddd';
             ctx.stroke();
         }
-        
+
         // Helper function to truncate text
         function truncateText(text, maxWidth) {
             let truncated = text;
             let width = ctx.measureText(truncated).width;
-            
+
             while (width > maxWidth && truncated.length > 3) {
                 truncated = truncated.slice(0, -1);
                 width = ctx.measureText(truncated + '...').width;
             }
-            
+
             return truncated.length < text.length ? truncated + '...' : truncated;
         }
-        
+
         // Generate data in batches
         function generateAllData() {
             const dataStartTime = performance.now();
             const progressBar = document.getElementById('progress-bar');
             const loadingMessage = document.getElementById('loading-message');
-            
+
             function processNextBatch() {
                 if (config.currentBatch >= config.totalRows) {
                     // All data generated
                     const dataEndTime = performance.now();
                     document.getElementById('data-time').textContent = (dataEndTime - dataStartTime).toFixed(2);
-                    
+
                     // Now initialize and render
                     const renderStartTime = performance.now();
-                    
+
                     // Initialize canvas
                     initCanvas();
-                    
+
                     // Hide loading message
                     loadingMessage.style.display = 'none';
-                    
+
                     // Update scrollbar
                     updateScrollbarThumb();
-                    
+
                     // Render table
                     renderTable();
-                    
+
                     const renderEndTime = performance.now();
                     document.getElementById('render-time').textContent = (renderEndTime - renderStartTime).toFixed(2);
-                    
+
                     return;
                 }
-                
+
                 // Generate next batch
                 const startIndex = config.currentBatch;
                 const batch = generateRandomDataBatch(startIndex, config.batchSize);
                 tableData.push(...batch);
-                
+
                 // Update progress
                 config.currentBatch += batch.length;
                 const progress = (config.currentBatch / config.totalRows) * 100;
                 progressBar.style.width = progress + '%';
-                
+
                 // Schedule next batch
                 setTimeout(processNextBatch, 0);
             }
-            
+
             // Start the first batch
             processNextBatch();
         }
-        
+
         // Initialize and render
         window.addEventListener('load', () => {
             // Start generating data
@@ -848,4 +862,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

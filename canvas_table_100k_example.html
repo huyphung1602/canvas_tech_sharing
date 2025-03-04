@@ -445,6 +445,14 @@
             // Draw headers
             drawTableHeader();
             
+            // Save the current context state
+            ctx.save();
+            
+            // Create a clipping region below the header to prevent rows from overlapping it
+            ctx.beginPath();
+            ctx.rect(0, config.headerHeight, canvas.width, canvas.height - config.headerHeight);
+            ctx.clip();
+            
             // Calculate start and end rows based on scroll position
             const startRow = Math.floor(config.scrollY / config.rowHeight);
             const endRow = Math.min(startRow + config.visibleRows + 1, tableData.length);
@@ -453,10 +461,16 @@
             for (let i = startRow; i < endRow; i++) {
                 drawTableRow(i, tableData[i]);
             }
+            
+            // Restore the context state
+            ctx.restore();
         }
         
         // Draw table header
         function drawTableHeader() {
+            // Clear just the header area to ensure it's always clean
+            ctx.clearRect(0, 0, canvas.width, config.headerHeight);
+            
             ctx.fillStyle = '#f2f2f2';
             ctx.fillRect(0, 0, canvas.width, config.headerHeight);
             
@@ -493,8 +507,8 @@
         function drawTableRow(rowIndex, rowData) {
             const y = (rowIndex * config.rowHeight) - config.scrollY + config.headerHeight;
             
-            // Skip rows outside visible area
-            if (y + config.rowHeight < 0 || y > canvas.height) {
+            // Skip rows completely outside visible area or rows that would overlap the header
+            if (y + config.rowHeight < config.headerHeight || y > canvas.height) {
                 return;
             }
             
