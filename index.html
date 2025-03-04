@@ -8,58 +8,227 @@
     <link rel="stylesheet" href="game.css">
 </head>
 <body class="bg-gray-50">
-    <!-- 9. Simple Game Demo -->
-    <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
-        <h2 class="text-3xl font-bold text-blue-800 mb-6">9. Simple Game Demo</h2>
-        <div class="bg-gray-100 p-6 rounded-lg">
-            <p class="mb-4">Use left/right arrow keys to move the rectangle:</p>
-            <div class="relative w-full h-[600px]" id="game-container">
-                <canvas id="gameCanvas" class="absolute inset-0 w-full h-full bg-white border-2 border-blue-600 rounded-lg"></canvas>
-                <div class="absolute bottom-4 left-4 flex gap-4">
-                    <button id="startGame" class="icon-button" aria-label="Start Game">
-                        <img src="assets/play.svg" alt="Play" />
-                    </button>
-                    <button id="stopGame" class="icon-button" aria-label="Stop Game">
-                        <img src="assets/stop.svg" alt="Stop" />
-                    </button>
-                    <button id="fullscreenGame" class="icon-button" aria-label="Toggle Fullscreen">
-                        <img src="assets/fullscreen.svg" alt="Fullscreen" />
-                    </button>
-                </div>
-            </div>
+    <header class="bg-blue-800 text-white py-16 mb-8">
+        <div class="max-w-7xl mx-auto px-4">
+            <h1 class="text-4xl font-bold mb-4">Creating Games Without a Game Engine</h1>
+            <p class="text-xl">I challenge myself to create a game without a game engine.</p>
         </div>
-    </section>
+    </header>
 
-    <!-- 10. Adding Environment Effects -->
-    <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
-        <h2 class="text-3xl font-bold text-blue-800 mb-6">10. Adding Environment Effects</h2>
-        <div class="bg-gray-100 p-6 rounded-lg">
-            <p class="mb-4">A starfield effect creates the illusion of forward movement:</p>
-            <div class="relative w-full h-[600px]" id="game-container1">
-                <canvas id="gameCanvas1" class="absolute inset-0 w-full h-full bg-black border-2 border-blue-600 rounded-lg"></canvas>
-                <div class="absolute bottom-4 left-4 flex gap-4">
-                    <button id="startGame1" class="icon-button" aria-label="Start Game">
-                        <img src="assets/play.svg" alt="Play" />
-                    </button>
-                    <button id="stopGame1" class="icon-button" aria-label="Stop Game">
-                        <img src="assets/stop.svg" alt="Stop" />
-                    </button>
-                    <button id="fullscreenGame1" class="icon-button" aria-label="Toggle Fullscreen">
-                        <img src="assets/fullscreen.svg" alt="Fullscreen" />
-                    </button>
-                </div>
-            </div>
-            <div class="mt-6">
-                <h3 class="text-xl font-semibold mb-4">Key Concepts:</h3>
-                <ul class="list-disc ml-6 space-y-2">
-                    <li>Multiple layers of objects (stars and player)</li>
-                    <li>Particle system for background effects</li>
-                    <li>Depth simulation through speed variation</li>
-                    <li>Object pooling for performance</li>
+    <main class="max-w-7xl mx-auto px-4">
+        <!-- 1. The Problem -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">1. The Problem</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <p class="text-lg">"I would like to create a game without a game engine."</p>
+                <p class="mt-4">But why? Understanding the fundamentals helps us:</p>
+                <ul class="list-disc ml-6 mt-2">
+                    <li>Learn how game engines work internally</li>
+                    <li>Create lightweight games without overhead</li>
+                    <li>Have complete control over the implementation</li>
                 </ul>
             </div>
-        </div>
-    </section>
+        </section>
+
+        <!-- 2. What is a Game Engine -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">2. What is a Game Engine?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-100 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Components</h3>
+                    <ul class="space-y-2">
+                        <li>✓ Game Loop</li>
+                        <li>✓ Rendering System</li>
+                        <li>✓ Physics Engine</li>
+                        <li>✓ Input Management</li>
+                        <li>✓ Asset Management</li>
+                        <li>✓ Sound System</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-100 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Popular Engines</h3>
+                    <ul class="space-y-2">
+                        <li>• Unity</li>
+                        <li>• Unreal Engine</li>
+                        <li>• Godot</li>
+                        <li>• Phaser (Web)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Basic Game Loop -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">3. Basic Game Loop</h2>
+            <div class="bg-gray-100 p-6 rounded-lg mb-4">
+                <p class="text-lg mb-4">"I think I only need a loop to create the game using HTML and JS"</p>
+                <pre class="bg-gray-900 text-white p-4 rounded-lg"><code>while (true) {
+    // Game logic here
+}</code></pre>
+            </div>
+            <p class="text-red-600 mt-4">❌ Problem: This will freeze the browser!</p>
+        </section>
+
+        <!-- 4. Fixed Time Step -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">4. Fixed Time Step</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">The Problem</h3>
+                <p class="mb-4">How to make sure the re-rendering JS only runs after a fixed time instead of CPU time?</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">❌ Bad Solution</h4>
+                        <pre class="bg-gray-900 text-white p-4 rounded-lg"><code>setInterval(gameLoop, 16); // ~60 FPS</code></pre>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">✓ Better Solution</h4>
+                        <pre class="bg-gray-900 text-white p-4 rounded-lg"><code>requestAnimationFrame(gameLoop);</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Consistent Speed -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">5. Consistent Game Speed</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">The Challenge</h3>
+                <p class="mb-4">How to make sure the game runs at the same speed on different CPUs?</p>
+                <pre class="bg-gray-900 text-white p-4 rounded-lg"><code>const deltaTime = currentTime - lastTime;
+update(deltaTime); // Pass time difference to update</code></pre>
+            </div>
+        </section>
+
+        <!-- 6. Game Loop Structure -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">6. Game Loop Structure</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <pre class="bg-gray-900 text-white p-4 rounded-lg mb-4"><code>while (true) {
+    processInput();
+    update();
+    render();
+}</code></pre>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">processInput()</h4>
+                        <p>Handle user input (keyboard, mouse, etc.)</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">update()</h4>
+                        <p>Update game state, physics, etc.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">render()</h4>
+                        <p>Draw the current game state</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. DOM vs Canvas -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">7. Why Canvas?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-100 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Canvas Advantages</h3>
+                    <ul class="space-y-2">
+                        <li class="text-green-600">✓ Better performance for many objects</li>
+                        <li class="text-green-600">✓ Direct pixel manipulation</li>
+                        <li class="text-green-600">✓ Simpler rendering model</li>
+                        <li class="text-green-600">✓ Hardware acceleration</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-100 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">DOM Limitations</h3>
+                    <ul class="space-y-2">
+                        <li class="text-red-600">❌ Heavy for many elements</li>
+                        <li class="text-red-600">❌ Layout recalculations</li>
+                        <li class="text-red-600">❌ Limited to HTML elements</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Time-based Animation -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">8. Frame Timing</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <pre class="bg-gray-900 text-white p-4 rounded-lg mb-4"><code>while (true) {
+    double start = getCurrentTime();
+    processInput();
+    update();
+    render();
+
+    sleep(start + MS_PER_FRAME - getCurrentTime());
+}</code></pre>
+                <p class="mt-4">In JavaScript with Canvas:</p>
+                <pre class="bg-gray-900 text-white p-4 rounded-lg"><code>const MS_PER_FRAME = 1000 / 60; // 60 FPS
+
+function gameLoop(timestamp) {
+    const deltaTime = timestamp - lastTime;
+    if (deltaTime >= MS_PER_FRAME) {
+        update(deltaTime);
+        render();
+        lastTime = timestamp;
+    }
+    requestAnimationFrame(gameLoop);
+}</code></pre>
+            </div>
+        </section>
+
+        <!-- 9. Simple Game Demo -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">9. Simple Game Demo</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <p class="mb-4">Use left/right arrow keys to move the rectangle:</p>
+                <div class="relative w-full h-[600px]" id="game-container">
+                    <canvas id="gameCanvas" class="absolute inset-0 w-full h-full bg-white border-2 border-blue-600 rounded-lg"></canvas>
+                    <div class="absolute bottom-4 left-4 flex gap-4">
+                        <button id="startGame" class="icon-button" aria-label="Start Game">
+                            <img src="assets/play.svg" alt="Play" />
+                        </button>
+                        <button id="stopGame" class="icon-button" aria-label="Stop Game">
+                            <img src="assets/stop.svg" alt="Stop" />
+                        </button>
+                        <button id="fullscreenGame" class="icon-button" aria-label="Toggle Fullscreen">
+                            <img src="assets/fullscreen.svg" alt="Fullscreen" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 10. Adding Environment Effects -->
+        <section class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <h2 class="text-3xl font-bold text-blue-800 mb-6">10. Adding Environment Effects</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <p class="mb-4">A starfield effect creates the illusion of forward movement:</p>
+                <div class="relative w-full h-[600px]" id="game-container1">
+                    <canvas id="gameCanvas1" class="absolute inset-0 w-full h-full bg-black border-2 border-blue-600 rounded-lg"></canvas>
+                    <div class="absolute bottom-4 left-4 flex gap-4">
+                        <button id="startGame1" class="icon-button" aria-label="Start Game">
+                            <img src="assets/play.svg" alt="Play" />
+                        </button>
+                        <button id="stopGame1" class="icon-button" aria-label="Stop Game">
+                            <img src="assets/stop.svg" alt="Stop" />
+                        </button>
+                        <button id="fullscreenGame1" class="icon-button" aria-label="Toggle Fullscreen">
+                            <img src="assets/fullscreen.svg" alt="Fullscreen" />
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h3 class="text-xl font-semibold mb-4">Key Concepts:</h3>
+                    <ul class="list-disc ml-6 space-y-2">
+                        <li>Multiple layers of objects (stars and player)</li>
+                        <li>Particle system for background effects</li>
+                        <li>Depth simulation through speed variation</li>
+                        <li>Object pooling for performance</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script src="gameloop.js"></script>
     <script src="gameloop1.js"></script>
