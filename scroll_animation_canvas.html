@@ -7,31 +7,92 @@
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background: #f5f5f5;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
         }
         h1 {
             color: #333;
             font-size: 24px;
-            margin-bottom: 10px;
+            margin: 0 0 10px 0;
+        }
+        .fps-counter {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
         }
         #canvas {
             border: 1px solid #d3d3d3;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+            height: calc(100vh - 74px);
+            box-sizing: border-box;
+            background: linear-gradient(45deg, #f3f3f3 25%, transparent 25%),
+                        linear-gradient(-45deg, #f3f3f3 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #f3f3f3 75%),
+                        linear-gradient(-45deg, transparent 75%, #f3f3f3 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Canvas Table (100k Rows)</h1>
-        <canvas id="canvas" width="1200" height="500"></canvas>
+        <h1>Canvas Table (1M Rows)</h1>
+        <div id="fpsCounter" class="fps-counter">FPS: 0</div>
+        <canvas id="canvas"></canvas>
     </div>
     <script>
-        const rowCount = 100000;
+        const canvas = document.getElementById("canvas");
+        const container = document.querySelector('.container');
+        const fpsCounter = document.getElementById("fpsCounter");
+        
+        // Get device pixel ratio and adjust for better text rendering
+        const dpr = Math.max(window.devicePixelRatio || 1, 2);
+        
+        // Font sizes
+        const HEADER_FONT_SIZE = 12;
+        const CELL_FONT_SIZE = 12;
+        
+        // Set canvas size to match container with pixel ratio scaling
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            
+            // Reset context settings after resize
+            ctx.scale(dpr, dpr);
+            ctx.textBaseline = 'middle';
+            ctx.textRendering = 'optimizeLegibility';
+            ctx.imageSmoothingEnabled = false;
+        }
+
+        const ctx = canvas.getContext("2d", { 
+            alpha: false,
+            antialias: false
+        });
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const rowCount = 1000000;
         const colCount = 10;
         const rowHeight = 40;
         const headerHeight = 50;
@@ -39,103 +100,159 @@
             Array.from({ length: colCount }, (_, j) => `R${i}C${j}-${Math.floor(Math.random() * 1000)}`)
         );
 
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
-        const visibleRows = Math.ceil((canvas.height - headerHeight) / rowHeight);
+        const visibleRows = Math.ceil((canvas.height/dpr - headerHeight) / rowHeight);
         let scrollOffset = 0;
         let hoveredRow = null;
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+        let borderHue = 0;
+
+        // FPS calculation
+        function updateFPS(now) {
+            frameCount++;
+            if (now - lastFpsUpdate >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+                fpsCounter.textContent = `FPS: ${fps}`;
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+        requestAnimationFrame(updateFPS);
 
         function drawTable() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            
+            ctx.clearRect(0, 0, width, height);
 
-            // Gradient scroll effect (match DOM)
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, `hsl(${scrollOffset % 360}, 50%, 95%)`);
-            gradient.addColorStop(1, "#fff");
+            // Background gradient based on scroll
+            const hue = scrollOffset % 360;
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, `hsla(${hue}, 50%, 98%, 0.95)`);
+            gradient.addColorStop(1, `hsla(${hue + 60}, 50%, 95%, 0.95)`);
             ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, width, height);
 
-            // Header (match DOM)
-            ctx.fillStyle = "#f2f2f2";
-            ctx.fillRect(0, 0, canvas.width, headerHeight);
+            // Calculate column width based on canvas width
+            const colWidth = width / colCount;
+
+            // Header with animated border
+            ctx.fillStyle = "rgba(242, 242, 242, 0.95)";
+            const headerGradient = ctx.createLinearGradient(0, 0, width, headerHeight);
+            headerGradient.addColorStop(0, "#f2f2f2");
+            headerGradient.addColorStop(1, "#ffffff");
+            ctx.fillStyle = headerGradient;
+            ctx.fillRect(0, 0, width, headerHeight);
+
+            // Animated border for header
+            borderHue = (borderHue + 2) % 360;
+            ctx.strokeStyle = `hsl(${borderHue}, 95%, 60%)`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(0, headerHeight - 3, width, 3);
+
+            // Draw header text
             ctx.fillStyle = "#333";
-            ctx.font = "bold 14px Arial";
+            ctx.font = `bold ${HEADER_FONT_SIZE * dpr}px Arial`;
             for (let j = 0; j < colCount; j++) {
-                ctx.fillText(`Column ${j + 1}`, j * 120 + 8, 30);
+                const x = j * colWidth + 8;
+                const y = headerHeight / 2;
+                ctx.fillText(`Column ${j + 1}`, x, y);
                 ctx.strokeStyle = "#e0e0e0";
-                ctx.strokeRect(j * 120, 0, 120, headerHeight);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(j * colWidth, 0, colWidth, headerHeight);
             }
-            ctx.strokeStyle = "#d3d3d3";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(0, headerHeight);
-            ctx.lineTo(canvas.width, headerHeight);
-            ctx.stroke();
-            ctx.lineWidth = 1;
 
             // Clip below header
             ctx.save();
             ctx.beginPath();
-            ctx.rect(0, headerHeight, canvas.width, canvas.height - headerHeight);
+            ctx.rect(0, headerHeight, width, height - headerHeight);
             ctx.clip();
 
             // Draw visible rows
             const startRow = Math.floor(scrollOffset / rowHeight);
             const endRow = Math.min(startRow + visibleRows + 1, rowCount);
+            
             for (let i = startRow; i < endRow; i++) {
                 const y = headerHeight + (i * rowHeight) - scrollOffset;
 
-                // Row background (match DOM alternating)
-                ctx.fillStyle = i % 2 === 0 ? "#fafafa" : "#fff";
-                ctx.fillRect(0, y, canvas.width, rowHeight);
+                // Row background with alternating pattern
+                ctx.fillStyle = i % 2 === 0 ? 
+                    "rgba(250, 250, 250, 0.9)" : 
+                    "rgba(255, 255, 255, 0.9)";
+                ctx.fillRect(0, y, width, rowHeight);
 
-                // Hover effect (before text to avoid overlap)
+                // Hover effect with color based on row index
                 if (hoveredRow === i) {
-                    ctx.fillStyle = `hsl(${i % 360}, 50%, 80%)`;
-                    ctx.fillRect(0, y, canvas.width, rowHeight);
+                    ctx.fillStyle = `hsla(${i % 360}, 50%, 80%, 0.9)`;
+                    ctx.fillRect(0, y, width, rowHeight);
+
+                    // Add subtle glow effect
+                    const glowGradient = ctx.createRadialGradient(
+                        width/2, y + rowHeight/2, 0,
+                        width/2, y + rowHeight/2, width/2
+                    );
+                    glowGradient.addColorStop(0, `hsla(${i % 360}, 50%, 80%, 0.2)`);
+                    glowGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+                    ctx.fillStyle = glowGradient;
+                    ctx.fillRect(0, y - 5, width, rowHeight + 10);
                 }
 
-                // Cells (text and borders)
+                // Cells
                 ctx.fillStyle = "#333";
-                ctx.font = "14px Arial";
+                ctx.font = `${CELL_FONT_SIZE * dpr}px Arial`;
                 for (let j = 0; j < colCount; j++) {
                     const text = data[i][j];
-                    ctx.fillText(text.length > 20 ? text.slice(0, 17) + "..." : text, j * 120 + 8, y + 25, 120 - 16);
+                    const x = j * colWidth + 8;
+                    const cellY = y + rowHeight/2;
+                    ctx.fillText(
+                        text.length > 20 ? text.slice(0, 17) + "..." : text,
+                        x,
+                        cellY,
+                        colWidth - 16
+                    );
                     ctx.strokeStyle = "#e0e0e0";
-                    ctx.strokeRect(j * 120, y, 120, rowHeight);
+                    ctx.strokeRect(j * colWidth, y, colWidth, rowHeight);
                 }
             }
             ctx.restore();
+
+            requestAnimationFrame(drawTable);
         }
 
-        // Event handlers (manual scroll)
+        // Event handlers
         canvas.addEventListener("click", (e) => {
-            const row = Math.floor((e.offsetY - headerHeight + scrollOffset) / rowHeight);
+            const rect = canvas.getBoundingClientRect();
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height) / dpr;
+            const row = Math.floor((y - headerHeight + scrollOffset) / rowHeight);
             if (row >= 0 && row < rowCount) console.log(`Clicked row ${row}`);
         });
+
         canvas.addEventListener("mousemove", (e) => {
-            const y = e.offsetY;
+            const rect = canvas.getBoundingClientRect();
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height) / dpr;
             if (y <= headerHeight) {
                 hoveredRow = null;
             } else {
                 hoveredRow = Math.floor((y - headerHeight + scrollOffset) / rowHeight);
                 if (hoveredRow >= rowCount) hoveredRow = null;
             }
-            drawTable();
         });
+
         canvas.addEventListener("dblclick", (e) => {
-            const row = Math.floor((e.offsetY - headerHeight + scrollOffset) / rowHeight);
+            const rect = canvas.getBoundingClientRect();
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height) / dpr;
+            const row = Math.floor((y - headerHeight + scrollOffset) / rowHeight);
             if (row >= 0 && row < rowCount) alert(`Double-clicked row ${row}`);
         });
+
         canvas.addEventListener("wheel", (e) => {
-            scrollOffset += e.deltaY;
-            scrollOffset = Math.max(0, Math.min(scrollOffset, (rowCount * rowHeight) - (canvas.height - headerHeight)));
-            drawTable();
-            e.preventDefault(); // Prevent browser scroll
+            const maxScroll = (rowCount * rowHeight) - (canvas.height/dpr - headerHeight);
+            scrollOffset = Math.max(0, Math.min(scrollOffset + e.deltaY, maxScroll));
+            e.preventDefault();
         });
 
         // Initial render
-        scrollOffset = 0;
         drawTable();
     </script>
 </body>
