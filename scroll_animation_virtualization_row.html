@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DOM Table - Virtualized</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .table-container {
+            height: 500px;
+            width: 1200px;
+            overflow-y: auto;
+            border: 1px solid #d3d3d3;
+            background: #fff;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .virtual-table {
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .row {
+            display: flex;
+            height: 40px;
+            position: absolute;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .row:nth-child(even) {
+            background: #fafafa;
+        }
+        .cell {
+            width: 120px;
+            padding: 8px;
+            border-right: 1px solid #e0e0e0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .header {
+            position: sticky;
+            top: 0;
+            background: #f2f2f2;
+            font-weight: bold;
+            z-index: 1;
+            border-bottom: 2px solid #d3d3d3;
+            height: 50px;
+            display: flex;
+        }
+        .header .cell {
+            font-weight: bold;
+            height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOM Virtualized Table (100k Rows)</h1>
+        <div id="tableContainer" class="table-container">
+            <div id="virtualTable" class="virtual-table"></div>
+        </div>
+    </div>
+    <script>
+        const rowCount = 100000;
+        const colCount = 10;
+        const rowHeight = 40;
+        const headerHeight = 50;
+        const data = Array.from({ length: rowCount }, (_, i) =>
+            Array.from({ length: colCount }, (_, j) => `R${i}C${j}-${Math.floor(Math.random() * 1000)}`)
+        );
+
+        const container = document.getElementById("tableContainer");
+        const virtualTable = document.getElementById("virtualTable");
+        const visibleRows = Math.ceil((container.clientHeight - headerHeight) / rowHeight);
+        let scrollOffset = 0;
+        let hoveredRow = null;
+
+        // Set total height for scrolling (only add headerHeight once)
+        virtualTable.style.height = `${(rowCount * rowHeight)}px`;
+
+        function renderRows(start) {
+            // Clear old rows but keep header
+            const existingHeader = virtualTable.querySelector('.header');
+            virtualTable.innerHTML = "";
+
+            // Header
+            const header = existingHeader || document.createElement("div");
+            if (!existingHeader) {
+                header.className = "row header";
+                for (let j = 0; j < colCount; j++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.textContent = `Column ${j + 1}`;
+                    header.appendChild(cell);
+                }
+            }
+            virtualTable.appendChild(header);
+
+            // Data rows
+            const end = Math.min(start + visibleRows + 1, rowCount);
+            for (let i = start; i < end; i++) {
+                const row = document.createElement("div");
+                row.className = "row";
+                row.style.transform = `translateY(${i * rowHeight}px)`;
+                row.style.background = i % 2 === 0 ? "#fafafa" : "#fff";
+
+                for (let j = 0; j < colCount; j++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    const text = data[i][j];
+                    cell.textContent = text.length > 20 ? text.slice(0, 17) + "..." : text;
+                    row.appendChild(cell);
+                }
+
+                // Event handlers matching Canvas version
+                row.addEventListener("click", () => console.log(`Clicked row ${i}`));
+                row.addEventListener("mouseover", () => {
+                    hoveredRow = i;
+                    row.style.background = `hsl(${i % 360}, 50%, 80%)`;
+                });
+                row.addEventListener("mouseout", () => {
+                    hoveredRow = null;
+                    row.style.background = i % 2 === 0 ? "#fafafa" : "#fff";
+                });
+                row.addEventListener("dblclick", () => alert(`Double-clicked row ${i}`));
+
+                virtualTable.appendChild(row);
+            }
+        }
+
+        // Scroll effect
+        container.addEventListener("scroll", () => {
+            scrollOffset = container.scrollTop;
+            const startRow = Math.floor(scrollOffset / rowHeight);
+            renderRows(startRow);
+
+            // Gradient scroll effect matching Canvas version
+            container.style.background = `linear-gradient(to bottom, hsl(${scrollOffset % 360}, 50%, 95%), #fff)`;
+        });
+
+        // Initial render
+        renderRows(0);
+
+        // Fixed wheel event handler to allow proper scrolling
+        container.addEventListener("wheel", (e) => {
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            container.scrollTop = Math.max(0, Math.min(container.scrollTop + e.deltaY, maxScroll));
+        });
+    </script>
+</body>
+</html>

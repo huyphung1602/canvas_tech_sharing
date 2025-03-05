@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Table</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        #canvas {
+            border: 1px solid #d3d3d3;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Canvas Table (100k Rows)</h1>
+        <canvas id="canvas" width="1200" height="500"></canvas>
+    </div>
+    <script>
+        const rowCount = 100000;
+        const colCount = 10;
+        const rowHeight = 40;
+        const headerHeight = 50;
+        const data = Array.from({ length: rowCount }, (_, i) =>
+            Array.from({ length: colCount }, (_, j) => `R${i}C${j}-${Math.floor(Math.random() * 1000)}`)
+        );
+
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const visibleRows = Math.ceil((canvas.height - headerHeight) / rowHeight);
+        let scrollOffset = 0;
+        let hoveredRow = null;
+
+        function drawTable() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Gradient scroll effect (match DOM)
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, `hsl(${scrollOffset % 360}, 50%, 95%)`);
+            gradient.addColorStop(1, "#fff");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Header (match DOM)
+            ctx.fillStyle = "#f2f2f2";
+            ctx.fillRect(0, 0, canvas.width, headerHeight);
+            ctx.fillStyle = "#333";
+            ctx.font = "bold 14px Arial";
+            for (let j = 0; j < colCount; j++) {
+                ctx.fillText(`Column ${j + 1}`, j * 120 + 8, 30);
+                ctx.strokeStyle = "#e0e0e0";
+                ctx.strokeRect(j * 120, 0, 120, headerHeight);
+            }
+            ctx.strokeStyle = "#d3d3d3";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, headerHeight);
+            ctx.lineTo(canvas.width, headerHeight);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+
+            // Clip below header
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, headerHeight, canvas.width, canvas.height - headerHeight);
+            ctx.clip();
+
+            // Draw visible rows
+            const startRow = Math.floor(scrollOffset / rowHeight);
+            const endRow = Math.min(startRow + visibleRows + 1, rowCount);
+            for (let i = startRow; i < endRow; i++) {
+                const y = headerHeight + (i * rowHeight) - scrollOffset;
+
+                // Row background (match DOM alternating)
+                ctx.fillStyle = i % 2 === 0 ? "#fafafa" : "#fff";
+                ctx.fillRect(0, y, canvas.width, rowHeight);
+
+                // Hover effect (before text to avoid overlap)
+                if (hoveredRow === i) {
+                    ctx.fillStyle = `hsl(${i % 360}, 50%, 80%)`;
+                    ctx.fillRect(0, y, canvas.width, rowHeight);
+                }
+
+                // Cells (text and borders)
+                ctx.fillStyle = "#333";
+                ctx.font = "14px Arial";
+                for (let j = 0; j < colCount; j++) {
+                    const text = data[i][j];
+                    ctx.fillText(text.length > 20 ? text.slice(0, 17) + "..." : text, j * 120 + 8, y + 25, 120 - 16);
+                    ctx.strokeStyle = "#e0e0e0";
+                    ctx.strokeRect(j * 120, y, 120, rowHeight);
+                }
+            }
+            ctx.restore();
+        }
+
+        // Event handlers (manual scroll)
+        canvas.addEventListener("click", (e) => {
+            const row = Math.floor((e.offsetY - headerHeight + scrollOffset) / rowHeight);
+            if (row >= 0 && row < rowCount) console.log(`Clicked row ${row}`);
+        });
+        canvas.addEventListener("mousemove", (e) => {
+            const y = e.offsetY;
+            if (y <= headerHeight) {
+                hoveredRow = null;
+            } else {
+                hoveredRow = Math.floor((y - headerHeight + scrollOffset) / rowHeight);
+                if (hoveredRow >= rowCount) hoveredRow = null;
+            }
+            drawTable();
+        });
+        canvas.addEventListener("dblclick", (e) => {
+            const row = Math.floor((e.offsetY - headerHeight + scrollOffset) / rowHeight);
+            if (row >= 0 && row < rowCount) alert(`Double-clicked row ${row}`);
+        });
+        canvas.addEventListener("wheel", (e) => {
+            scrollOffset += e.deltaY;
+            scrollOffset = Math.max(0, Math.min(scrollOffset, (rowCount * rowHeight) - (canvas.height - headerHeight)));
+            drawTable();
+            e.preventDefault(); // Prevent browser scroll
+        });
+
+        // Initial render
+        scrollOffset = 0;
+        drawTable();
+    </script>
+</body>
+</html>

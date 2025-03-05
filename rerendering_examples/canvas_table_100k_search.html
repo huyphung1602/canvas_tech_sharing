@@ -670,63 +670,63 @@
         function renderTable() {
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // Draw headers
             drawTableHeader();
-            
+
             // If no filtered data, show no-results message
             if (filteredData.length === 0) {
                 return;
             }
-            
+
             // Save the current context state
             ctx.save();
-            
+
             // Create a clipping region below the header to prevent rows from overlapping it
             ctx.beginPath();
             ctx.rect(0, config.headerHeight, canvas.width, canvas.height - config.headerHeight);
             ctx.clip();
-            
+
             // Calculate start and end rows based on scroll position
             const startRow = Math.floor(config.scrollY / config.rowHeight);
             const endRow = Math.min(startRow + config.visibleRows + 1, filteredData.length);
-            
+
             // Draw visible rows
             for (let i = startRow; i < endRow; i++) {
                 drawTableRow(i, filteredData[i]);
             }
-            
+
             // Restore the context state
             ctx.restore();
         }
-        
+
         // Draw table header
         function drawTableHeader() {
             // Clear just the header area to ensure it's always clean
             ctx.clearRect(0, 0, canvas.width, config.headerHeight);
-            
+
             ctx.fillStyle = '#f2f2f2';
             ctx.fillRect(0, 0, canvas.width, config.headerHeight);
-            
+
             ctx.fillStyle = '#333';
             ctx.font = 'bold 14px Arial';
-            
+
             let xOffset = 0;
-            
+
             // Draw column headers
             config.columns.forEach(column => {
                 ctx.fillText(column.name, xOffset + 10, 30);
-                
+
                 // Draw vertical separator
                 ctx.beginPath();
                 ctx.moveTo(xOffset + column.width, 0);
                 ctx.lineTo(xOffset + column.width, config.headerHeight);
                 ctx.strokeStyle = '#ddd';
                 ctx.stroke();
-                
+
                 xOffset += column.width;
             });
-            
+
             // Draw bottom border
             ctx.beginPath();
             ctx.moveTo(0, config.headerHeight);
@@ -736,53 +736,53 @@
             ctx.stroke();
             ctx.lineWidth = 1;
         }
-        
+
         // Draw a single table row
         function drawTableRow(rowIndex, rowData) {
             const y = (rowIndex * config.rowHeight) - config.scrollY + config.headerHeight;
-            
+
             // Skip rows completely outside visible area or rows that would overlap the header
             if (y + config.rowHeight < config.headerHeight || y > canvas.height) {
                 return;
             }
-            
+
             // Draw row background (alternating)
             ctx.fillStyle = rowIndex % 2 === 0 ? '#ffffff' : '#f9f9f9';
             ctx.fillRect(0, y, canvas.width, config.rowHeight);
-            
+
             // Draw cell content
             ctx.fillStyle = '#333';
             ctx.font = '14px Arial';
-            
+
             let xOffset = 0;
-            
+
             config.columns.forEach(column => {
                 // Draw cell text
                 const text = String(rowData[column.id]);
                 const maxWidth = column.width - 20; // Padding
-                
+
                 // Truncate text if it's too long
                 let displayText = text;
                 if (ctx.measureText(text).width > maxWidth) {
                     displayText = truncateText(text, maxWidth);
                 }
-                
+
                 ctx.fillText(
-                    displayText, 
-                    xOffset + 10, 
+                    displayText,
+                    xOffset + 10,
                     y + 25
                 );
-                
+
                 // Draw vertical separator
                 ctx.beginPath();
                 ctx.moveTo(xOffset + column.width, y);
                 ctx.lineTo(xOffset + column.width, y + config.rowHeight);
                 ctx.strokeStyle = '#eee';
                 ctx.stroke();
-                
+
                 xOffset += column.width;
             });
-            
+
             // Draw bottom border
             ctx.beginPath();
             ctx.moveTo(0, y + config.rowHeight);

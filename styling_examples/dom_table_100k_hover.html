@@ -216,14 +216,14 @@
         function updateFPS() {
             const now = performance.now();
             frameCount++;
-            
+
             if (now - lastFrameTime >= 1000) {
                 fps = Math.round((frameCount * 1000) / (now - lastFrameTime));
                 fpsCounter.textContent = fps;
                 frameCount = 0;
                 lastFrameTime = now;
             }
-            
+
             requestAnimationFrame(updateFPS);
         }
 
@@ -239,10 +239,10 @@
                 // Render rows in batches to prevent UI freezing
                 function renderBatch(startIdx, batchSize) {
                     const endIdx = Math.min(startIdx + batchSize, data.length);
-                    
+
                     // Create a document fragment for better performance
                     const batchFragment = document.createDocumentFragment();
-                    
+
                     for (let i = startIdx; i < endIdx; i++) {
                         const item = data[i];
                         const row = document.createElement('tr');
@@ -288,7 +288,7 @@
                     if (startIdx === 0) {
                         tableBody.innerHTML = '';
                     }
-                    
+
                     // Append this batch of rows
                     tableBody.appendChild(batchFragment);
 
@@ -328,4 +328,4 @@
         loadButton.addEventListener('click', initTable);
     </script>
 </body>
-</html> 
+</html>
