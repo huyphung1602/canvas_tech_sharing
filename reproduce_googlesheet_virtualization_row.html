@@ -6,13 +6,24 @@
     <title>Virtualized Table Demo</title>
     <style>
         body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1000px;
+            margin: 0 auto;
         }
 
         .table-container {
-            height: 600px;
+            height: 500px;
             overflow-y: auto;
             border: 1px solid #ccc;
             position: relative;
@@ -27,17 +38,29 @@
 
         .row {
             display: flex;
-            height: 30px;
-            border-bottom: 1px solid #eee;
+            height: 40px;
+            border-bottom: 1px solid #ddd;
+            transition: background-color 0.2s;
+        }
+
+        .row:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .row:hover:not(.header) {
+            background-color: #e6f7ff;
+            cursor: pointer;
         }
 
         .cell {
             flex: 1;
-            padding: 5px;
-            border-right: 1px solid #eee;
+            padding: 8px;
+            border-right: 1px solid #ddd;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
         }
 
         .cell[contenteditable="true"]:focus {
@@ -48,30 +71,65 @@
         .header {
             position: sticky;
             top: 0;
-            background: #f8f9fa;
+            background: #f2f2f2;
             font-weight: bold;
             z-index: 1;
             border-bottom: 2px solid #dee2e6;
+            height: 50px;
         }
 
         .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f2f2f2;
+            border-radius: 4px;
+        }
+
+        .hover-info {
+            padding: 10px;
+            margin-top: 10px;
             margin-bottom: 10px;
-            color: #666;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .performance-metrics {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div class="stats">
-        <div>Total Rows: <span id="totalRows">0</span></div>
-        <div>Rendered Rows: <span id="renderedRows">0</span></div>
-    </div>
-    <div id="tableContainer" class="table-container">
-        <div id="virtualTable" class="virtual-table">
-            <div class="row header">
-                <div class="cell">ID</div>
-                <div class="cell">Name</div>
-                <div class="cell">Email</div>
-                <div class="cell">Department</div>
+    <div class="container">
+        <h1>Virtualized Table Demo</h1>
+        <p>This example shows a virtualized table with efficient row rendering and hover effects.</p>
+
+        <div class="hover-info" id="hover-info">
+            <p><strong>Hover Status:</strong> <span id="hover-status">No row hovered</span></p>
+            <p><strong>Implementation:</strong> Virtualized table with efficient DOM reuse and hover tracking.</p>
+        </div>
+
+        <div class="performance-metrics">
+            <div>Rendered Rows: <span id="renderedRows">0</span> / <span id="totalRows">0</span></div>
+            <div>Scroll Position: <span id="scrollPosition">0</span>px</div>
+        </div>
+
+        <div id="tableContainer" class="table-container">
+            <div id="virtualTable" class="virtual-table">
+                <div class="row header">
+                    <div class="cell">ID</div>
+                    <div class="cell">Name</div>
+                    <div class="cell">Email</div>
+                    <div class="cell">Department</div>
+                </div>
             </div>
         </div>
     </div>
@@ -80,17 +138,19 @@
         class VirtualizedTable {
             constructor() {
                 this.totalRows = 1000000;
-                this.rowHeight = 30;
+                this.rowHeight = 40;
                 this.visibleRows = 0;
                 this.startIndex = 0;
                 this.buffer = 10; // Extra rows to render above and below viewport
                 this.data = this.generateData();
-                
+
                 this.container = document.getElementById('tableContainer');
                 this.virtualTable = document.getElementById('virtualTable');
                 this.statsTotal = document.getElementById('totalRows');
                 this.statsRendered = document.getElementById('renderedRows');
-                
+                this.scrollPosition = document.getElementById('scrollPosition');
+                this.hoverStatus = document.getElementById('hover-status');
+
                 this.init();
             }
 
@@ -113,20 +173,23 @@
                 this.handleScroll();
 
                 // Add scroll event listener
-                this.container.addEventListener('scroll', () => this.handleScroll());
+                this.container.addEventListener('scroll', () => {
+                    this.handleScroll();
+                    this.scrollPosition.textContent = Math.round(this.container.scrollTop);
+                });
             }
 
             handleScroll() {
                 const scrollTop = this.container.scrollTop;
                 const containerHeight = this.container.clientHeight;
-                
+
                 // Calculate which rows should be visible
                 let startIndex = Math.floor(scrollTop / this.rowHeight);
                 startIndex = Math.max(0, startIndex - this.buffer);
-                
+
                 const visibleCount = Math.ceil(containerHeight / this.rowHeight) + this.buffer * 2;
                 const endIndex = Math.min(this.totalRows, startIndex + visibleCount);
-                
+
                 // Only re-render if necessary
                 if (startIndex !== this.startIndex || visibleCount !== this.visibleRows) {
                     this.startIndex = startIndex;
@@ -154,6 +217,15 @@
                         <div class="cell" contenteditable="true">${row.email}</div>
                         <div class="cell" contenteditable="true">${row.department}</div>
                     `;
+
+                    // Add hover event listeners
+                    rowElement.addEventListener('mouseenter', () => {
+                        this.hoverStatus.textContent = `Row ID: ${row.id}, Name: ${row.name}`;
+                    });
+
+                    rowElement.addEventListener('mouseleave', () => {
+                        this.hoverStatus.textContent = 'No row hovered';
+                    });
 
                     // Add event listeners for contenteditable cells
                     const editableCells = rowElement.querySelectorAll('[contenteditable="true"]');
