@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtualized Table Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .table-container {
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+
+        .virtual-table {
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .row {
+            display: flex;
+            height: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cell {
+            flex: 1;
+            padding: 5px;
+            border-right: 1px solid #eee;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cell[contenteditable="true"]:focus {
+            outline: 2px solid #007bff;
+            background-color: #f8f9fa;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            font-weight: bold;
+            z-index: 1;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .stats {
+            margin-bottom: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="stats">
+        <div>Total Rows: <span id="totalRows">0</span></div>
+        <div>Rendered Rows: <span id="renderedRows">0</span></div>
+    </div>
+    <div id="tableContainer" class="table-container">
+        <div id="virtualTable" class="virtual-table">
+            <div class="row header">
+                <div class="cell">ID</div>
+                <div class="cell">Name</div>
+                <div class="cell">Email</div>
+                <div class="cell">Department</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class VirtualizedTable {
+            constructor() {
+                this.totalRows = 1000000;
+                this.rowHeight = 30;
+                this.visibleRows = 0;
+                this.startIndex = 0;
+                this.buffer = 10; // Extra rows to render above and below viewport
+                this.data = this.generateData();
+                
+                this.container = document.getElementById('tableContainer');
+                this.virtualTable = document.getElementById('virtualTable');
+                this.statsTotal = document.getElementById('totalRows');
+                this.statsRendered = document.getElementById('renderedRows');
+                
+                this.init();
+            }
+
+            generateData() {
+                const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance'];
+                return Array.from({ length: this.totalRows }, (_, i) => ({
+                    id: i + 1,
+                    name: `User ${i + 1}`,
+                    email: `user${i + 1}@example.com`,
+                    department: departments[i % departments.length]
+                }));
+            }
+
+            init() {
+                // Set total height to accommodate all rows
+                this.virtualTable.style.height = `${(this.totalRows + 1) * this.rowHeight}px`;
+                this.statsTotal.textContent = this.totalRows;
+
+                // Initial render
+                this.handleScroll();
+
+                // Add scroll event listener
+                this.container.addEventListener('scroll', () => this.handleScroll());
+            }
+
+            handleScroll() {
+                const scrollTop = this.container.scrollTop;
+                const containerHeight = this.container.clientHeight;
+                
+                // Calculate which rows should be visible
+                let startIndex = Math.floor(scrollTop / this.rowHeight);
+                startIndex = Math.max(0, startIndex - this.buffer);
+                
+                const visibleCount = Math.ceil(containerHeight / this.rowHeight) + this.buffer * 2;
+                const endIndex = Math.min(this.totalRows, startIndex + visibleCount);
+                
+                // Only re-render if necessary
+                if (startIndex !== this.startIndex || visibleCount !== this.visibleRows) {
+                    this.startIndex = startIndex;
+                    this.visibleRows = visibleCount;
+                    this.renderRows(startIndex, endIndex);
+                }
+            }
+
+            renderRows(startIndex, endIndex) {
+                // Clear existing rows (except header)
+                while (this.virtualTable.children.length > 1) {
+                    this.virtualTable.removeChild(this.virtualTable.lastChild);
+                }
+
+                // Render visible rows
+                for (let i = startIndex; i < endIndex; i++) {
+                    const row = this.data[i];
+                    const rowElement = document.createElement('div');
+                    rowElement.className = 'row';
+                    rowElement.style.transform = `translateY(${(i + 1) * this.rowHeight}px)`;
+
+                    rowElement.innerHTML = `
+                        <div class="cell">${row.id}</div>
+                        <div class="cell" contenteditable="true">${row.name}</div>
+                        <div class="cell" contenteditable="true">${row.email}</div>
+                        <div class="cell" contenteditable="true">${row.department}</div>
+                    `;
+
+                    // Add event listeners for contenteditable cells
+                    const editableCells = rowElement.querySelectorAll('[contenteditable="true"]');
+                    editableCells.forEach((cell, cellIndex) => {
+                        cell.addEventListener('blur', (e) => {
+                            const newValue = e.target.textContent;
+                            const field = ['name', 'email', 'department'][cellIndex];
+                            this.data[i][field] = newValue;
+                        });
+                    });
+
+                    this.virtualTable.appendChild(rowElement);
+                }
+
+                // Update stats
+                this.statsRendered.textContent = endIndex - startIndex;
+            }
+        }
+
+        // Initialize the table when the page loads
+        window.addEventListener('load', () => {
+            new VirtualizedTable();
+        });
+    </script>
+</body>
+</html> 
