@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pivot Table with PDF Export - Canvas Implementation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            width: fit-content;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #333;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        button.export-pdf {
+            background-color: #db4437;
+        }
+        button.export-pdf:hover {
+            background-color: #c31f0f;
+        }
+        .canvas-container {
+            position: relative;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+        #pivotCanvas {
+            cursor: default;
+        }
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .scrollbar {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 12px;
+            background-color: #F5F5F5;
+            border-left: 1px solid #E0E0E0;
+            border-radius: 6px;
+        }
+        .scrollbar-thumb {
+            position: absolute;
+            width: 12px;
+            background-color: #9FA8DA;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .scrollbar-thumb:hover {
+            background-color: #7986CB;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pivot Table - Canvas Implementation</h1>
+            <div class="controls">
+                <button id="refreshBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12C4.01 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="white"/>
+                    </svg>
+                    Refresh
+                </button>
+                <button id="exportPdfBtn" class="export-pdf">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H8V4H20V16ZM4 6H2V20C2 21.1 2.9 22 4 22H18V20H4V6ZM16 12V9C16 8.45 15.55 8 15 8H13V13H15C15.55 13 16 12.55 16 12ZM14 9H15V12H14V9ZM18 11H19V10H18V9H19V8H17V13H18V11ZM10 11H11C11.55 11 12 10.55 12 10V9C12 8.45 11.55 8 11 8H9V13H10V11ZM10 9H11V10H10V9Z" fill="white"/>
+                    </svg>
+                    Export PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="pivotCanvas"></canvas>
+            <div class="scrollbar" id="verticalScrollbar">
+                <div class="scrollbar-thumb" id="verticalScrollThumb"></div>
+            </div>
+            <div class="loading" id="loadingOverlay">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            canvasWidth: 1000,
+            canvasHeight: 800,
+            rowHeight: 35,
+            headerHeight: 60,
+            cellPadding: 12,
+            font: '13px Arial',
+            headerFont: 'bold 14px Arial',
+            textColor: '#333',
+            headerBgColor: '#E8EAF6',
+            borderColor: '#C5CAE9',
+            alternateRowColor: '#F5F6FF',
+            highlightColor: '#E8F0FE',
+            categoryBgColor: '#3F51B5',
+            categoryTextColor: '#FFFFFF',
+            totalRowBgColor: '#E3F2FD',
+            gridLineWidth: 1,
+            pdfMargin: 20,
+            pdfScale: 0.95,
+            mergedCellSpacing: 8,
+            subcategoryIndent: 20,
+            metricIndent: 40,
+            borderRadius: 4,
+            column1Width: 200,
+            column2Width: 200
+        };
+
+        // Pivot table data
+        const pivotData = {
+            headers: {
+                rows: ['Product Type', 'Product Family'],
+                columns: ['Store Region'],
+                values: ['Round of Sum of Cost', 'Sum of Quantity']
+            },
+            data: [
+                {
+                    rowHeader: 'Arts & Entertainment',
+                    children: [
+                        {
+                            rowHeader: 'Hobbies & Creative Arts',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 2855467.12, 'Midwest': 39667465.37, 'West': 40916722.43, 'Total': 156810073.73 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 271568, 'Midwest': 225261, 'West': 376844, 'Total': 1540160 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'Party & Celebration',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 126162.72, 'Midwest': 161608.75, 'West': 185655.37, 'Total': 672717.49 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 300, 'Midwest': 266, 'West': 470, 'Total': 1804 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'Total',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 28480729.84, 'Midwest': 39829074.12, 'West': 41102377.8, 'Total': 157482791.22 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 271868, 'Midwest': 225527, 'West': 377314, 'Total': 1541964 } }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    rowHeader: 'Computers',
+                    children: [
+                        {
+                            rowHeader: 'Computers & Tablets',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 6068486.73, 'Midwest': 7214555.94, 'West': 9700356.64, 'Total': 34034615.75 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 186819, 'Midwest': 134784, 'West': 272077, 'Total': 1088486 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'Printing',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 1753063.16, 'Midwest': 2457520.98, 'West': 2935194.68, 'Total': 10512507.02 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 57384, 'Midwest': 43865, 'West': 76147, 'Total': 314631 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'Total',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 7821549.89, 'Midwest': 9672076.92, 'West': 12635551.32, 'Total': 44547122.78 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 244203, 'Midwest': 178649, 'West': 348224, 'Total': 1403117 } }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    rowHeader: 'Entertainment',
+                    children: [
+                        {
+                            rowHeader: 'Energy Star TV',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 1935968.3, 'Midwest': 3481166.28, 'West': 3334609.8, 'Total': 12873537.44 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 14460, 'Midwest': 18211, 'West': 22186, 'Total': 101706 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'High Definition TV',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 4250404.97, 'Midwest': 6594656.01, 'West': 8414327.36, 'Total': 28432820.08 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 43762, 'Midwest': 51845, 'West': 102483, 'Total': 368243 } }
+                            ]
+                        },
+                        {
+                            rowHeader: 'Total',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 6186373.27, 'Midwest': 10075822.29, 'West': 11748937.16, 'Total': 41306357.52 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 58222, 'Midwest': 70056, 'West': 124669, 'Total': 469949 } }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    rowHeader: 'Total',
+                    children: [
+                        {
+                            rowHeader: '',
+                            metrics: [
+                                { metric: 'Round of Sum of Cost', values: { 'East': 42488653, 'Midwest': 59576973.33, 'West': 65486866.28, 'Total': 243336271.52 } },
+                                { metric: 'Sum of Quantity', values: { 'East': 574293, 'Midwest': 474232, 'West': 850207, 'Total': 3415030 } }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            columnHeaders: ['East', 'Midwest', 'West', 'Total']
+        };
+
+        // Initialize canvas
+        const canvas = document.getElementById('pivotCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const verticalScrollbar = document.getElementById('verticalScrollbar');
+        const verticalScrollThumb = document.getElementById('verticalScrollThumb');
+
+        // Set canvas dimensions
+        canvas.width = config.canvasWidth;
+        canvas.height = config.canvasHeight;
+        canvasContainer.style.width = `${config.canvasWidth}px`;
+        canvasContainer.style.height = `${config.canvasHeight}px`;
+
+        // Calculate column widths
+        const rowHeaderWidth = config.column1Width + config.column2Width;  // Combined width of first two columns
+        const dataColumnWidth = Math.floor((config.canvasWidth - rowHeaderWidth) / (pivotData.columnHeaders.length - 1));
+
+        // Calculate total content height with spacing
+        let totalRows = 0;
+        pivotData.data.forEach(category => {
+            totalRows += 1; // Category header
+            category.children.forEach(subcategory => {
+                totalRows += subcategory.metrics.length; // Metrics (Sum of Cost, Sum of Quantity)
+            });
+        });
+        const contentHeight = totalRows * config.rowHeight + config.headerHeight;
+        const maxScrollOffset = Math.max(0, contentHeight - config.canvasHeight + config.headerHeight);
+
+        // Scrolling state
+        let scrollOffset = 0;
+        let isDragging = false;
+        let lastY = 0;
+
+        // Update scrollbar
+        function updateScrollbar() {
+            const scrollRatio = config.canvasHeight / contentHeight;
+            const thumbHeight = Math.max(30, scrollRatio * config.canvasHeight);
+            const thumbPosition = (scrollOffset / maxScrollOffset) * (config.canvasHeight - thumbHeight);
+
+            verticalScrollbar.style.height = `${config.canvasHeight}px`;
+            verticalScrollThumb.style.height = `${thumbHeight}px`;
+            verticalScrollThumb.style.top = `${thumbPosition}px`;
+        }
+
+        // Draw histogram for region totals
+        function drawHistogram(x, y, width, height, east, midwest, west, maxValue) {
+            const barWidth = width / 4; // 3 bars + spacing
+            const barHeightScale = height * 0.7 / maxValue;
+
+            // East
+            ctx.fillStyle = '#3498db'; // Blue
+            ctx.fillRect(x + barWidth * 0.5, y + height - (east * barHeightScale) - 5, barWidth, east * barHeightScale);
+
+            // Midwest
+            ctx.fillStyle = '#2ecc71'; // Green
+            ctx.fillRect(x + barWidth * 1.5, y + height - (midwest * barHeightScale) - 5, barWidth, midwest * barHeightScale);
+
+            // West
+            ctx.fillStyle = '#f1c40f'; // Yellow
+            ctx.fillRect(x + barWidth * 2.5, y + height - (west * barHeightScale) - 5, barWidth, west * barHeightScale);
+        }
+
+        // Enhanced number formatting
+        function formatNumber(num) {
+            if (typeof num !== 'number') return num;
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            } else {
+                return num.toLocaleString();
+            }
+        }
+
+        // Add currency formatting
+        function formatCurrency(num) {
+            if (typeof num !== 'number') return num;
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(num);
+        }
+
+        // Draw the pivot table
+        function drawPivotTable(fullRender = false) {
+            const renderCtx = this.ctx || ctx;
+            const renderCanvas = this.canvas || canvas;
+
+            renderCtx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
+
+            // Enable anti-aliasing
+            renderCtx.imageSmoothingEnabled = true;
+            renderCtx.imageSmoothingQuality = 'high';
+
+            // Draw table background
+            renderCtx.fillStyle = '#FFFFFF';
+            renderCtx.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
+
+            // Calculate visible area
+            const visibleStartY = fullRender ? 0 : scrollOffset;
+            const visibleEndY = fullRender ? contentHeight : (scrollOffset + config.canvasHeight - config.headerHeight);
+
+            // Draw merged header background
+            renderCtx.fillStyle = config.headerBgColor;
+            renderCtx.fillRect(0, 0, renderCanvas.width, config.headerHeight);
+
+            // Draw row headers section title (merged cell)
+            renderCtx.save();
+            renderCtx.fillStyle = config.categoryBgColor;
+            renderCtx.fillRect(0, 0, config.column1Width, config.headerHeight);
+            renderCtx.fillStyle = '#FFFFFF';
+            renderCtx.font = config.headerFont;
+            renderCtx.textAlign = 'center';
+            renderCtx.textBaseline = 'middle';
+            renderCtx.fillText('Product Categories', config.column1Width / 2, config.headerHeight / 2);
+            renderCtx.restore();
+
+            // Draw metrics section title (merged cell)
+            renderCtx.save();
+            renderCtx.fillStyle = config.categoryBgColor;
+            renderCtx.fillRect(config.column1Width, 0, renderCanvas.width - config.column1Width, config.headerHeight);
+            renderCtx.fillStyle = '#FFFFFF';
+            renderCtx.font = config.headerFont;
+            renderCtx.textAlign = 'center';
+            renderCtx.textBaseline = 'middle';
+            renderCtx.fillText('Store Regions', (renderCanvas.width + config.column1Width) / 2, config.headerHeight / 2);
+
+            // Draw column headers
+            pivotData.columnHeaders.forEach((header, index) => {
+                if (header === 'Trend') return;
+                const x = config.column1Width + index * dataColumnWidth;
+
+                // Draw column header text
+                renderCtx.fillStyle = '#FFFFFF';
+                renderCtx.font = config.headerFont;
+                renderCtx.textAlign = 'center';
+                renderCtx.fillText(header, x + dataColumnWidth / 2, config.headerHeight * 3 / 4);
+            });
+            renderCtx.restore();
+
+            // Draw rows with added spacing
+            let y = config.headerHeight - (fullRender ? 0 : scrollOffset);
+            let rowIndex = 0;
+
+            // First pass: Draw all backgrounds
+            pivotData.data.forEach((category, categoryIndex) => {
+                // Draw category row background
+                if (y + config.rowHeight > 0 && y < renderCanvas.height) {
+                    renderCtx.fillStyle = config.categoryBgColor;
+                    renderCtx.fillRect(0, y, renderCanvas.width, config.rowHeight);
+                }
+
+                y += config.rowHeight;
+                rowIndex++;
+
+                // Draw subcategory backgrounds
+                category.children.forEach((subcategory, subcategoryIndex) => {
+                    const metricStartY = y;
+                    const totalMetricHeight = subcategory.metrics.length * config.rowHeight;
+
+                    // Draw merged subcategory cell background
+                    if (metricStartY + totalMetricHeight > 0 && metricStartY < renderCanvas.height) {
+                        // Draw background for subcategory column
+                        renderCtx.fillStyle = subcategory.rowHeader === 'Total' ? config.totalRowBgColor :
+                            (rowIndex % 2 === 1 ? config.alternateRowColor : '#FFFFFF');
+                        renderCtx.fillRect(0, metricStartY, config.column1Width, totalMetricHeight);
+                    }
+
+                    // Draw metric row backgrounds
+                    subcategory.metrics.forEach((metric, metricIndex) => {
+                        if (y + config.rowHeight > 0 && y < renderCanvas.height) {
+                            // Draw row background for data cells
+                            renderCtx.fillStyle = subcategory.rowHeader === 'Total' ? config.totalRowBgColor :
+                                (rowIndex % 2 === 1 ? config.alternateRowColor : '#FFFFFF');
+                            renderCtx.fillRect(config.column1Width, y, renderCanvas.width - config.column1Width, config.rowHeight);
+                        }
+                        y += config.rowHeight;
+                        rowIndex++;
+                    });
+
+                    // Add spacing between subcategories
+                    if (subcategoryIndex < category.children.length - 1) {
+                        y += config.rowHeight / 4;
+                        rowIndex++;
+                    }
+                });
+            });
+
+            // Reset for second pass
+            y = config.headerHeight - (fullRender ? 0 : scrollOffset);
+            rowIndex = 0;
+
+            // Second pass: Draw all grid lines
+            // Draw vertical grid lines first
+            renderCtx.strokeStyle = config.borderColor;
+            renderCtx.lineWidth = config.gridLineWidth;
+
+            // Column 1 and 2 divider - make it more prominent
+            renderCtx.beginPath();
+            renderCtx.moveTo(config.column1Width, 0);
+            renderCtx.lineTo(config.column1Width, renderCanvas.height);
+            renderCtx.stroke();
+
+            // Main vertical divider between headers and data
+            renderCtx.beginPath();
+            renderCtx.moveTo(rowHeaderWidth, 0);
+            renderCtx.lineTo(rowHeaderWidth, renderCanvas.height);
+            renderCtx.stroke();
+
+            // Column dividers for data columns
+            pivotData.columnHeaders.forEach((header, index) => {
+                if (index === 0) return; // Skip first line as it's the main divider
+                const x = rowHeaderWidth + index * dataColumnWidth;
+                renderCtx.beginPath();
+                renderCtx.moveTo(x, config.headerHeight);
+                renderCtx.lineTo(x, renderCanvas.height);
+                renderCtx.stroke();
+            });
+
+            // Draw horizontal header line
+            renderCtx.lineWidth = 2;
+            renderCtx.beginPath();
+            renderCtx.moveTo(0, config.headerHeight);
+            renderCtx.lineTo(renderCanvas.width, config.headerHeight);
+            renderCtx.stroke();
+            renderCtx.lineWidth = config.gridLineWidth;
+
+            // Draw horizontal grid lines for data rows
+            pivotData.data.forEach((category, categoryIndex) => {
+                // Skip category top line as it's the header line
+                y += config.rowHeight;
+
+                // Draw category bottom line
+                if (y > 0 && y < renderCanvas.height) {
+                    renderCtx.beginPath();
+                    renderCtx.moveTo(0, y);
+                    renderCtx.lineTo(renderCanvas.width, y);
+                    renderCtx.stroke();
+                }
+
+                // Draw subcategory lines
+                category.children.forEach((subcategory, subcategoryIndex) => {
+                    const metricStartY = y;
+                    const totalMetricHeight = subcategory.metrics.length * config.rowHeight;
+
+                    // Draw metric row lines
+                    subcategory.metrics.forEach((metric, metricIndex) => {
+                        y += config.rowHeight;
+
+                        // Draw horizontal line - but only draw full line for the last metric in a subcategory
+                        if (y > 0 && y < renderCanvas.height) {
+                            renderCtx.beginPath();
+                            // If this is not the last metric in a multi-metric subcategory, only draw line from column 2 onwards
+                            if (metricIndex < subcategory.metrics.length - 1 && subcategory.metrics.length > 1) {
+                                renderCtx.moveTo(config.column1Width, y);
+                                renderCtx.lineTo(renderCanvas.width, y);
+                            } else {
+                                renderCtx.moveTo(config.column1Width, y);
+                                renderCtx.lineTo(renderCanvas.width, y);
+                            }
+                            renderCtx.stroke();
+                        }
+                    });
+
+                    // Add spacing between subcategories
+                    if (subcategoryIndex < category.children.length - 1) {
+                        y += config.rowHeight / 4;
+                    }
+                });
+            });
+
+            // Reset for third pass
+            y = config.headerHeight - (fullRender ? 0 : scrollOffset);
+            rowIndex = 0;
+
+            // Third pass: Draw all text content
+            pivotData.data.forEach((category, categoryIndex) => {
+                // Draw category text
+                if (y + config.rowHeight > 0 && y < renderCanvas.height) {
+                    renderCtx.font = config.headerFont;
+                    renderCtx.fillStyle = config.categoryTextColor;
+                    renderCtx.textAlign = 'left';
+                    renderCtx.textBaseline = 'middle';
+                    renderCtx.fillText(category.rowHeader, config.cellPadding, y + config.rowHeight / 2);
+                }
+
+                y += config.rowHeight;
+                rowIndex++;
+
+                // Draw subcategory content
+                category.children.forEach((subcategory, subcategoryIndex) => {
+                    const metricStartY = y;
+                    const totalMetricHeight = subcategory.metrics.length * config.rowHeight;
+
+                    // Draw subcategory name
+                    if (metricStartY + totalMetricHeight > 0 && metricStartY < renderCanvas.height && subcategory.rowHeader) {
+                        renderCtx.font = subcategory.rowHeader === 'Total' ? config.headerFont : config.font;
+                        renderCtx.fillStyle = config.textColor;
+                        renderCtx.textAlign = 'left';
+                        renderCtx.textBaseline = 'middle';
+                        const indent = subcategory.rowHeader === 'Total' ?
+                            config.cellPadding + config.mergedCellSpacing :
+                            config.cellPadding + config.subcategoryIndent;
+
+                        // Center the subcategory text vertically in the merged cell
+                        renderCtx.fillText(subcategory.rowHeader, indent, metricStartY + totalMetricHeight / 2);
+                    }
+
+                    // Draw metrics and values
+                    subcategory.metrics.forEach((metric, metricIndex) => {
+                        if (y + config.rowHeight > 0 && y < renderCanvas.height) {
+                            // Draw metric name
+                            renderCtx.font = config.font;
+                            renderCtx.fillStyle = config.textColor;
+                            renderCtx.textAlign = 'left';
+                            renderCtx.textBaseline = 'middle';
+                            const metricX = config.column1Width + config.cellPadding;
+                            renderCtx.fillText(metric.metric, metricX, y + config.rowHeight / 2);
+
+                            // Draw cell values
+                            pivotData.columnHeaders.forEach((columnHeader, columnIndex) => {
+                                if (columnHeader === 'Trend') {
+                                    if (metric.metric === 'Sum of Quantity' && subcategory.rowHeader !== 'Total') {
+                                        const x = rowHeaderWidth + columnIndex * dataColumnWidth;
+                                        drawHistogram(x, y, dataColumnWidth, config.rowHeight,
+                                            metric.values['East'], metric.values['Midwest'], metric.values['West'], 377314);
+                                    }
+                                    return;
+                                }
+
+                                const cellData = metric.values[columnHeader];
+                                if (cellData !== undefined) {
+                                    const x = rowHeaderWidth + columnIndex * dataColumnWidth;
+
+                                    // Draw cell value
+                                    renderCtx.textAlign = 'right';
+                                    renderCtx.textBaseline = 'middle';
+                                    renderCtx.font = config.font;
+                                    renderCtx.fillStyle = config.textColor;
+                                    const formattedValue = metric.metric.includes('Cost') ? formatCurrency(cellData) : formatNumber(cellData);
+                                    renderCtx.fillText(formattedValue, x + dataColumnWidth - config.cellPadding, y + config.rowHeight / 2);
+                                }
+                            });
+                        }
+
+                        y += config.rowHeight;
+                        rowIndex++;
+                    });
+
+                    // Add spacing between subcategories
+                    if (subcategoryIndex < category.children.length - 1) {
+                        y += config.rowHeight / 4;
+                        rowIndex++;
+                    }
+                });
+            });
+
+            if (!fullRender) {
+                updateScrollbar();
+            }
+        }
+
+        // Event listeners
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            scrollOffset = Math.max(0, Math.min(maxScrollOffset, scrollOffset + e.deltaY));
+            drawPivotTable();
+        });
+
+        verticalScrollThumb.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaY = e.clientY - lastY;
+            lastY = e.clientY;
+
+            const scrollRatio = maxScrollOffset / (config.canvasHeight - verticalScrollThumb.offsetHeight);
+            scrollOffset = Math.max(0, Math.min(maxScrollOffset, scrollOffset + deltaY * scrollRatio));
+
+            drawPivotTable();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            scrollOffset = 0;
+            drawPivotTable();
+        });
+
+        document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
+
+        // Initial render
+        drawPivotTable();
+        loadingOverlay.style.display = 'none';
+
+        // Fixed PDF export function
+        function exportToPDF() {
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                // Create a temporary canvas with full content height
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = config.canvasWidth * 2; // Double resolution for better quality
+                tempCanvas.height = contentHeight * 2;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // Set scale for higher resolution
+                tempCtx.scale(2, 2);
+                tempCtx.imageSmoothingEnabled = true;
+                tempCtx.imageSmoothingQuality = 'high';
+
+                // Draw the full table (no scroll offset)
+                drawPivotTable.call({ canvas: tempCanvas, ctx: tempCtx }, true);
+
+                // Calculate PDF dimensions to fit the content
+                const contentRatio = contentHeight / config.canvasWidth;
+                const pdfWidth = 842; // A4 landscape width in points
+                const pdfHeight = pdfWidth * contentRatio; // Height adjusted to maintain aspect ratio
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'pt',
+                    format: [pdfWidth, pdfHeight]
+                });
+
+                // Calculate scaling to fit the PDF page with margins
+                const usableWidth = pdfWidth - (config.pdfMargin * 2);
+                const usableHeight = pdfHeight - (config.pdfMargin * 2);
+                const scale = Math.min(usableWidth / config.canvasWidth, usableHeight / contentHeight);
+
+                const scaledWidth = config.canvasWidth * scale;
+                const scaledHeight = contentHeight * scale;
+
+                // Center the image on the page
+                const xOffset = (pdfWidth - scaledWidth) / 2;
+                const yOffset = (pdfHeight - scaledHeight) / 2;
+
+                // Add to PDF with better quality
+                const imgData = tempCanvas.toDataURL('image/jpeg', 1.0);
+                pdf.addImage(
+                    imgData,
+                    'JPEG',
+                    xOffset,
+                    yOffset,
+                    scaledWidth,
+                    scaledHeight,
+                    null,
+                    'FAST'
+                );
+
+                // Save with timestamp
+                const timestamp = new Date().toISOString().split('T')[0];
+                pdf.save(`pivot-table-export-${timestamp}.pdf`);
+
+                loadingOverlay.style.display = 'none';
+            } catch (error) {
+                console.error('Error exporting to PDF:', error);
+                alert('Error exporting to PDF. Please try again.');
+                loadingOverlay.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

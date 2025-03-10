@@ -61,14 +61,14 @@
         const canvas = document.getElementById("canvas");
         const container = document.querySelector('.container');
         const fpsCounter = document.getElementById("fpsCounter");
-        
+
         // Get device pixel ratio and adjust for better text rendering
         const dpr = Math.max(window.devicePixelRatio || 1, 2);
-        
+
         // Font sizes
         const HEADER_FONT_SIZE = 12;
         const CELL_FONT_SIZE = 12;
-        
+
         // Set canvas size to match container with pixel ratio scaling
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
@@ -76,7 +76,7 @@
             canvas.height = rect.height * dpr;
             canvas.style.width = `${rect.width}px`;
             canvas.style.height = `${rect.height}px`;
-            
+
             // Reset context settings after resize
             ctx.scale(dpr, dpr);
             ctx.textBaseline = 'middle';
@@ -84,11 +84,11 @@
             ctx.imageSmoothingEnabled = false;
         }
 
-        const ctx = canvas.getContext("2d", { 
+        const ctx = canvas.getContext("2d", {
             alpha: false,
             antialias: false
         });
-        
+
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
@@ -123,7 +123,7 @@
         function drawTable() {
             const width = canvas.width / dpr;
             const height = canvas.height / dpr;
-            
+
             ctx.clearRect(0, 0, width, height);
 
             // Background gradient based on scroll
@@ -172,13 +172,13 @@
             // Draw visible rows
             const startRow = Math.floor(scrollOffset / rowHeight);
             const endRow = Math.min(startRow + visibleRows + 1, rowCount);
-            
+
             for (let i = startRow; i < endRow; i++) {
                 const y = headerHeight + (i * rowHeight) - scrollOffset;
 
                 // Row background with alternating pattern
-                ctx.fillStyle = i % 2 === 0 ? 
-                    "rgba(250, 250, 250, 0.9)" : 
+                ctx.fillStyle = i % 2 === 0 ?
+                    "rgba(250, 250, 250, 0.9)" :
                     "rgba(255, 255, 255, 0.9)";
                 ctx.fillRect(0, y, width, rowHeight);
 
