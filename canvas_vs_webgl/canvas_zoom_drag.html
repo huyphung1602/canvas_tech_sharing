@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canvas 2D - 1M Squares (Baseline)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+            z-index: 1000;
+        }
+        .back-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-button">← Back</a>
+    <canvas id="myCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('myCanvas');
+
+        // Set canvas size to window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Initial resize and add event listener
+        resizeCanvas();
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            draw();
+        });
+
+        const ctx = canvas.getContext('2d');
+        let scale = 1.0;
+        let offsetX = 0, offsetY = 0;
+        let isDragging = false;
+        let startX, startY;
+        const objects = [];
+
+        // Tạo 1 triệu hình vuông ngẫu nhiên (không gian 2000x2000)
+        for (let i = 0; i < 1000000; i++) {
+            objects.push({
+                x: Math.random() * 2000,
+                y: Math.random() * 2000,
+                size: 2
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // Culling để tối ưu
+            for (let i = 0; i < objects.length; i++) {
+                const obj = objects[i];
+                const screenX = obj.x * scale + offsetX;
+                const screenY = obj.y * scale + offsetY;
+                if (screenX < -obj.size || screenX > canvas.width || screenY < -obj.size || screenY > canvas.height) continue;
+
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(obj.x, obj.y, obj.size, obj.size);
+            }
+            ctx.restore();
+        }
+
+        // Zoom bằng wheel chuột
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            const oldScale = scale;
+            scale *= (e.deltaY < 0) ? (1 + zoomSpeed) : (1 - zoomSpeed);
+            scale = Math.max(0.1, Math.min(scale, 10));
+
+            const mouseX = e.clientX - canvas.offsetLeft;
+            const mouseY = e.clientY - canvas.offsetTop;
+            offsetX = (mouseX - offsetX) * (scale / oldScale) - mouseX + offsetX;
+            offsetY = (mouseY - offsetY) * (scale / oldScale) - mouseY + offsetY;
+
+            draw();
+        });
+
+        // Drag bằng chuột
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - offsetX;
+            startY = e.clientY - offsetY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX = e.clientX - startX;
+                offsetY = e.clientY - startY;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Vẽ lần đầu
+        draw();
+    </script>
+</body>
+</html>
