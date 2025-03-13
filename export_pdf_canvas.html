@@ -147,7 +147,7 @@
         // Configuration
         const config = {
             canvasWidth: 1000,
-            canvasHeight: 800,
+            canvasHeight: 1600,
             rowHeight: 35,
             headerHeight: 60,
             cellPadding: 12,
@@ -271,7 +271,7 @@
                     ]
                 }
             ],
-            columnHeaders: ['East', 'Midwest', 'West', 'Total']
+            columnHeaders: ['East', 'Midwest', 'West']
         };
 
         // Initialize canvas
@@ -290,7 +290,7 @@
 
         // Calculate column widths
         const rowHeaderWidth = config.column1Width + config.column2Width;  // Combined width of first two columns
-        const dataColumnWidth = Math.floor((config.canvasWidth - rowHeaderWidth) / (pivotData.columnHeaders.length - 1));
+        const dataColumnWidth = Math.floor((config.canvasWidth - rowHeaderWidth) / pivotData.columnHeaders.length);
 
         // Calculate total content height with spacing
         let totalRows = 0;
@@ -300,7 +300,7 @@
                 totalRows += subcategory.metrics.length; // Metrics (Sum of Cost, Sum of Quantity)
             });
         });
-        const contentHeight = totalRows * config.rowHeight + config.headerHeight;
+        const contentHeight = totalRows * config.rowHeight + config.headerHeight + 4 * config.headerHeight;
         const maxScrollOffset = Math.max(0, contentHeight - config.canvasHeight + config.headerHeight);
 
         // Scrolling state
@@ -399,21 +399,28 @@
             renderCtx.fillStyle = config.categoryBgColor;
             renderCtx.fillRect(config.column1Width, 0, renderCanvas.width - config.column1Width, config.headerHeight);
             renderCtx.fillStyle = '#FFFFFF';
-            renderCtx.font = config.headerFont;
+            renderCtx.font = 'bold 16px Arial';
             renderCtx.textAlign = 'center';
             renderCtx.textBaseline = 'middle';
-            renderCtx.fillText('Store Regions', (renderCanvas.width + config.column1Width) / 2, config.headerHeight / 2);
+            const storeRegionsCenterX = rowHeaderWidth + ((renderCanvas.width - rowHeaderWidth) / 2);
+            renderCtx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            renderCtx.shadowBlur = 3;
+            renderCtx.shadowOffsetX = 1;
+            renderCtx.shadowOffsetY = 1;
+            renderCtx.fillText('Store Regions', storeRegionsCenterX, config.headerHeight / 3);
+            renderCtx.shadowColor = 'transparent';
 
             // Draw column headers
             pivotData.columnHeaders.forEach((header, index) => {
                 if (header === 'Trend') return;
-                const x = config.column1Width + index * dataColumnWidth;
+                // Calculate the x position for each column header
+                const x = rowHeaderWidth + (index * dataColumnWidth);
 
                 // Draw column header text
                 renderCtx.fillStyle = '#FFFFFF';
-                renderCtx.font = config.headerFont;
+                renderCtx.font = 'bold 15px Arial';
                 renderCtx.textAlign = 'center';
-                renderCtx.fillText(header, x + dataColumnWidth / 2, config.headerHeight * 3 / 4);
+                renderCtx.fillText(header, x + dataColumnWidth / 2, config.headerHeight * 2/3);
             });
             renderCtx.restore();
 
@@ -694,17 +701,75 @@
                 tempCtx.imageSmoothingEnabled = true;
                 tempCtx.imageSmoothingQuality = 'high';
 
+                // Reset scroll offset to ensure we render the full table
+                const originalScrollOffset = scrollOffset;
+                scrollOffset = 0;
+
                 // Draw the full table (no scroll offset)
                 drawPivotTable.call({ canvas: tempCanvas, ctx: tempCtx }, true);
+                
+                // Ensure headers are drawn again on top to make them more visible
+                tempCtx.save();
+                
+                // Draw header backgrounds
+                tempCtx.fillStyle = config.categoryBgColor;
+                tempCtx.fillRect(0, 0, config.column1Width, config.headerHeight);
+                tempCtx.fillRect(config.column1Width, 0, config.canvasWidth - config.column1Width, config.headerHeight);
+                
+                // Add borders around headers
+                tempCtx.strokeStyle = '#FFFFFF';
+                tempCtx.lineWidth = 2;
+                tempCtx.strokeRect(0, 0, config.column1Width, config.headerHeight);
+                tempCtx.strokeRect(config.column1Width, 0, config.canvasWidth - config.column1Width, config.headerHeight);
+                
+                // Draw Product Categories header
+                tempCtx.fillStyle = '#FFFFFF';
+                tempCtx.font = 'bold 16px Arial';
+                tempCtx.textAlign = 'center';
+                tempCtx.textBaseline = 'middle';
+                tempCtx.fillText('Product Categories', config.column1Width / 2, config.headerHeight / 2);
+                
+                // Draw Store Regions header
+                const storeRegionsCenterX = rowHeaderWidth + ((config.canvasWidth - rowHeaderWidth) / 2);
+                tempCtx.fillText('Store Regions', storeRegionsCenterX, config.headerHeight / 3);
+                
+                // Draw column headers
+                pivotData.columnHeaders.forEach((header, index) => {
+                    if (header === 'Trend') return;
+                    const x = rowHeaderWidth + (index * dataColumnWidth);
+                    tempCtx.fillStyle = '#FFFFFF';
+                    tempCtx.font = 'bold 15px Arial';
+                    tempCtx.textAlign = 'center';
+                    tempCtx.fillText(header, x + dataColumnWidth / 2, config.headerHeight * 2/3);
+                    
+                    // Add vertical dividers between column headers
+                    if (index > 0) {
+                        tempCtx.beginPath();
+                        tempCtx.moveTo(x, 0);
+                        tempCtx.lineTo(x, config.headerHeight);
+                        tempCtx.stroke();
+                    }
+                });
+                
+                // Add horizontal line below headers
+                tempCtx.beginPath();
+                tempCtx.moveTo(0, config.headerHeight);
+                tempCtx.lineTo(config.canvasWidth, config.headerHeight);
+                tempCtx.stroke();
+                
+                tempCtx.restore();
+
+                // Restore original scroll offset
+                scrollOffset = originalScrollOffset;
 
                 // Calculate PDF dimensions to fit the content
                 const contentRatio = contentHeight / config.canvasWidth;
-                const pdfWidth = 842; // A4 landscape width in points
-                const pdfHeight = pdfWidth * contentRatio; // Height adjusted to maintain aspect ratio
+                const pdfWidth = 600; // A4 landscape width in points
+                const pdfHeight = Math.max(595, pdfWidth * contentRatio); // Height adjusted to maintain aspect ratio, minimum A4 height
 
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({
-                    orientation: 'landscape',
+                    orientation: 'portrait',
                     unit: 'pt',
                     format: [pdfWidth, pdfHeight]
                 });
@@ -737,6 +802,9 @@
                 // Save with timestamp
                 const timestamp = new Date().toISOString().split('T')[0];
                 pdf.save(`pivot-table-export-${timestamp}.pdf`);
+
+                // Redraw the canvas with the original scroll offset
+                drawPivotTable();
 
                 loadingOverlay.style.display = 'none';
             } catch (error) {
