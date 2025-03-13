@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Table - 1M Rows (Scrollable)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background-color: #e0e7ff;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4834d4;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .canvas-container {
+            position: relative;
+            height: 600px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .scrollbar {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+
+        .scrollbar-thumb {
+            position: absolute;
+            width: 12px;
+            background-color: #888;
+            border-radius: 6px;
+        }
+
+        .scrollbar-thumb:hover {
+            background-color: #555;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6c5ce7;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .back-button:hover {
+            background-color: #5744d4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Canvas Table - 1M Rows (Scrollable)</h1>
+        <div class="stats" id="stats">Loading...</div>
+        
+        <div class="performance-metrics">
+            <div class="metric">
+                <div class="metric-value" id="fps-value">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="frame-time-value">0</div>
+                <div class="metric-label">Frame Time (ms)</div>
+            </div>
+        </div>
+        
+        <div class="canvas-container" id="canvasContainer">
+            <div class="loading">Generating 1,000,000 rows, please wait...</div>
+        </div>
+        <a href="index.html" class="back-button">Back to Home</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvasContainer = document.getElementById('canvasContainer');
+            const stats = document.getElementById('stats');
+            const fpsValue = document.getElementById('fps-value');
+            const frameTimeValue = document.getElementById('frame-time-value');
+            
+            const startTime = performance.now();
+            
+            // Performance monitoring variables
+            let frameCount = 0;
+            let lastFrameTime = performance.now();
+            let lastFpsUpdateTime = performance.now();
+            const fpsUpdateInterval = 1000; // Update FPS every second
+            
+            // Clear loading message
+            canvasContainer.innerHTML = '';
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvasContainer.appendChild(canvas);
+            
+            // Create scrollbar
+            const scrollbar = document.createElement('div');
+            scrollbar.className = 'scrollbar';
+            
+            const scrollThumb = document.createElement('div');
+            scrollThumb.className = 'scrollbar-thumb';
+            scrollbar.appendChild(scrollThumb);
+            canvasContainer.appendChild(scrollbar);
+            
+            // Set canvas dimensions
+            const containerWidth = canvasContainer.clientWidth;
+            const containerHeight = canvasContainer.clientHeight;
+            canvas.width = containerWidth - 12; // Subtract scrollbar width
+            canvas.height = containerHeight;
+            
+            // Table configuration
+            const rowHeight = 40;
+            const headerHeight = 50;
+            const totalRows = 1000000;
+            const totalHeight = headerHeight + (totalRows * rowHeight);
+            
+            // Column configuration
+            const columns = [
+                { name: 'ID', width: 80 },
+                { name: 'Name', width: 200 },
+                { name: 'Email', width: 300 },
+                { name: 'Department', width: 150 },
+                { name: 'Position', width: 150 }
+            ];
+            
+            // Calculate total width
+            const totalWidth = columns.reduce((sum, col) => sum + col.width, 0);
+            
+            // Generate random data
+            const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Product', 'Design'];
+            const positions = ['Manager', 'Director', 'Associate', 'Intern', 'VP', 'Specialist', 'Lead'];
+            
+            const generateName = () => {
+                const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma'];
+                const lastNames = ['Smith', 'Johnson', 'Brown', 'Davis', 'Wilson', 'Miller', 'Jones', 'Garcia', 'Martinez', 'Williams'];
+                return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+            };
+            
+            const generateEmail = (name, id) => {
+                const nameParts = name.toLowerCase().split(' ');
+                return `${nameParts[0]}.${nameParts[1]}${id}@example.com`;
+            };
+            
+            // Function to get data for a specific row
+            function getRowData(rowIndex) {
+                // Cache data for better performance
+                if (!getRowData.cache) {
+                    getRowData.cache = new Map();
+                }
+                
+                if (getRowData.cache.has(rowIndex)) {
+                    return getRowData.cache.get(rowIndex);
+                }
+                
+                const name = generateName();
+                const department = departments[Math.floor(Math.random() * departments.length)];
+                const position = positions[Math.floor(Math.random() * positions.length)];
+                const email = generateEmail(name, rowIndex + 1);
+                
+                const data = [
+                    (rowIndex + 1).toString(),
+                    name,
+                    email,
+                    department,
+                    position
+                ];
+                
+                // Cache the result (limit cache size to prevent memory issues)
+                if (getRowData.cache.size > 1000) {
+                    // Remove oldest entry
+                    const firstKey = getRowData.cache.keys().next().value;
+                    getRowData.cache.delete(firstKey);
+                }
+                
+                getRowData.cache.set(rowIndex, data);
+                return data;
+            }
+            
+            // Scrolling state
+            let scrollTop = 0;
+            let hoveredRow = -1;
+            
+            // Update scrollbar thumb
+            function updateScrollThumb() {
+                const viewportRatio = containerHeight / totalHeight;
+                const thumbHeight = Math.max(30, containerHeight * viewportRatio);
+                scrollThumb.style.height = `${thumbHeight}px`;
+                
+                const scrollRatio = scrollTop / (totalHeight - containerHeight);
+                const thumbTop = scrollRatio * (containerHeight - thumbHeight);
+                scrollThumb.style.top = `${thumbTop}px`;
+            }
+            
+            // Render the table
+            function renderTable() {
+                const renderStart = performance.now();
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Calculate visible rows
+                const startRow = Math.floor(scrollTop / rowHeight);
+                const visibleRows = Math.ceil(containerHeight / rowHeight) + 1;
+                const endRow = Math.min(startRow + visibleRows, totalRows);
+                
+                // Draw header background
+                ctx.fillStyle = '#6c5ce7';
+                ctx.fillRect(0, 0, canvas.width, headerHeight);
+                
+                // Draw header text
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Segoe UI, system-ui, sans-serif';
+                ctx.textBaseline = 'middle';
+                
+                let xPos = 10;
+                columns.forEach(column => {
+                    ctx.fillText(column.name, xPos, headerHeight / 2);
+                    xPos += column.width;
+                });
+                
+                // Draw rows
+                ctx.font = '14px Segoe UI, system-ui, sans-serif';
+                
+                for (let i = startRow; i < endRow; i++) {
+                    const yPos = (i * rowHeight) + headerHeight - scrollTop;
+                    
+                    // Skip if row is not visible
+                    if (yPos < headerHeight || yPos > containerHeight) continue;
+                    
+                    // Draw row background (alternating colors)
+                    if (i === hoveredRow) {
+                        ctx.fillStyle = '#e0e7ff';
+                    } else if (i % 2 === 0) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = '#f8f9fa';
+                    }
+                    ctx.fillRect(0, yPos, canvas.width, rowHeight);
+                    
+                    // Draw row data
+                    ctx.fillStyle = '#333';
+                    const rowData = getRowData(i);
+                    
+                    let cellX = 10;
+                    columns.forEach((column, colIndex) => {
+                        ctx.fillText(rowData[colIndex], cellX, yPos + (rowHeight / 2));
+                        cellX += column.width;
+                    });
+                    
+                    // Draw bottom border
+                    ctx.strokeStyle = '#eee';
+                    ctx.beginPath();
+                    ctx.moveTo(0, yPos + rowHeight);
+                    ctx.lineTo(canvas.width, yPos + rowHeight);
+                    ctx.stroke();
+                }
+                
+                // Update stats
+                stats.textContent = `Viewing rows ${startRow + 1} to ${endRow} of ${totalRows.toLocaleString()}`;
+                
+                const renderEnd = performance.now();
+                const renderTime = renderEnd - renderStart;
+                frameTimeValue.textContent = renderTime.toFixed(1);
+            }
+            
+            // Function to update performance metrics
+            function updatePerformanceMetrics() {
+                const now = performance.now();
+                
+                // Calculate FPS
+                frameCount++;
+                if (now - lastFpsUpdateTime >= fpsUpdateInterval) {
+                    const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
+                    fpsValue.textContent = fps;
+                    frameCount = 0;
+                    lastFpsUpdateTime = now;
+                }
+                
+                // Schedule next update
+                requestAnimationFrame(updatePerformanceMetrics);
+            }
+            
+            // Handle mouse wheel scrolling
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                scrollTop = Math.max(0, Math.min(totalHeight - containerHeight, scrollTop + e.deltaY));
+                updateScrollThumb();
+                requestAnimationFrame(renderTable);
+            });
+            
+            // Handle scrollbar dragging
+            let isDragging = false;
+            let dragStartY = 0;
+            let initialThumbTop = 0;
+            
+            scrollThumb.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartY = e.clientY;
+                initialThumbTop = parseInt(scrollThumb.style.top || '0', 10);
+                document.body.style.userSelect = 'none';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaY = e.clientY - dragStartY;
+                const thumbHeight = parseInt(scrollThumb.style.height || '30', 10);
+                const maxTop = containerHeight - thumbHeight;
+                
+                let newTop = Math.max(0, Math.min(maxTop, initialThumbTop + deltaY));
+                scrollThumb.style.top = `${newTop}px`;
+                
+                // Update scroll position
+                const scrollRatio = newTop / maxTop;
+                scrollTop = scrollRatio * (totalHeight - containerHeight);
+                requestAnimationFrame(renderTable);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                document.body.style.userSelect = '';
+            });
+            
+            // Handle mouse movement for row highlighting
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                // Ignore if in header area
+                if (y <= headerHeight) {
+                    hoveredRow = -1;
+                } else {
+                    const rowIndex = Math.floor((y + scrollTop - headerHeight) / rowHeight);
+                    hoveredRow = rowIndex < totalRows ? rowIndex : -1;
+                }
+                
+                requestAnimationFrame(renderTable);
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                hoveredRow = -1;
+                requestAnimationFrame(renderTable);
+            });
+            
+            // Initial render
+            updateScrollThumb();
+            renderTable();
+            
+            // Start performance monitoring
+            updatePerformanceMetrics();
+            
+            // Report rendering time
+            const endTime = performance.now();
+            stats.textContent += ` (Initialized in ${((endTime - startTime) / 1000).toFixed(2)} seconds)`;
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.width = canvasContainer.clientWidth - 12;
+                canvas.height = canvasContainer.clientHeight;
+                updateScrollThumb();
+                requestAnimationFrame(renderTable);
+            });
+        });
+    </script>
+</body>
+</html> 

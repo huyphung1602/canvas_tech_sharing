@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Table - 1M Rows (No Virtualization)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background-color: #e0e7ff;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4834d4;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .table-container {
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #6c5ce7;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background-color: #e0e7ff;
+            cursor: pointer;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6c5ce7;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .back-button:hover {
+            background-color: #5744d4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOM Table - 1M Rows (No Virtualization)</h1>
+        <div class="stats" id="stats">Loading...</div>
+        
+        <div class="performance-metrics">
+            <div class="metric">
+                <div class="metric-value" id="fps-value">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="frame-time-value">0</div>
+                <div class="metric-label">Frame Time (ms)</div>
+            </div>
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+            <div class="loading">Generating 1,000,000 rows, please wait...</div>
+        </div>
+        <a href="index.html" class="back-button">Back to Home</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableContainer = document.getElementById('tableContainer');
+            const stats = document.getElementById('stats');
+            const fpsValue = document.getElementById('fps-value');
+            const frameTimeValue = document.getElementById('frame-time-value');
+            
+            const startTime = performance.now();
+            
+            // Performance monitoring variables
+            let frameCount = 0;
+            let lastFrameTime = performance.now();
+            let lastFpsUpdateTime = performance.now();
+            const fpsUpdateInterval = 1000; // Update FPS every second
+            
+            // Create table structure
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            
+            // Create header row
+            const headerRow = document.createElement('tr');
+            ['ID', 'Name', 'Email', 'Department', 'Position'].forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            
+            // Generate random data
+            const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Product', 'Design'];
+            const positions = ['Manager', 'Director', 'Associate', 'Intern', 'VP', 'Specialist', 'Lead'];
+            
+            const generateName = () => {
+                const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma'];
+                const lastNames = ['Smith', 'Johnson', 'Brown', 'Davis', 'Wilson', 'Miller', 'Jones', 'Garcia', 'Martinez', 'Williams'];
+                return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+            };
+            
+            const generateEmail = (name, id) => {
+                const nameParts = name.toLowerCase().split(' ');
+                return `${nameParts[0]}.${nameParts[1]}${id}@example.com`;
+            };
+            
+            // Function to create rows in batches
+            function createRows(startIndex, endIndex) {
+                const fragment = document.createDocumentFragment();
+                
+                for (let i = startIndex; i < endIndex; i++) {
+                    const name = generateName();
+                    const department = departments[Math.floor(Math.random() * departments.length)];
+                    const position = positions[Math.floor(Math.random() * positions.length)];
+                    
+                    const row = document.createElement('tr');
+                    
+                    const idCell = document.createElement('td');
+                    idCell.textContent = i + 1;
+                    
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = name;
+                    
+                    const emailCell = document.createElement('td');
+                    emailCell.textContent = generateEmail(name, i + 1);
+                    
+                    const deptCell = document.createElement('td');
+                    deptCell.textContent = department;
+                    
+                    const posCell = document.createElement('td');
+                    posCell.textContent = position;
+                    
+                    row.appendChild(idCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(emailCell);
+                    row.appendChild(deptCell);
+                    row.appendChild(posCell);
+                    
+                    fragment.appendChild(row);
+                }
+                
+                return fragment;
+            }
+            
+            // Clear loading message and add table
+            tableContainer.innerHTML = '';
+            tableContainer.appendChild(table);
+            
+            // Total number of rows
+            const totalRows = 1000000;
+            const batchSize = 5000;
+            let currentIndex = 0;
+            
+            function processBatch() {
+                const endIndex = Math.min(currentIndex + batchSize, totalRows);
+                tbody.appendChild(createRows(currentIndex, endIndex));
+                currentIndex = endIndex;
+                
+                // Update stats
+                stats.textContent = `Rendered ${currentIndex.toLocaleString()} of ${totalRows.toLocaleString()} rows`;
+                
+                if (currentIndex < totalRows) {
+                    // Schedule next batch
+                    setTimeout(processBatch, 0);
+                } else {
+                    // All done
+                    const endTime = performance.now();
+                    stats.textContent = `Rendered ${totalRows.toLocaleString()} rows in ${((endTime - startTime) / 1000).toFixed(2)} seconds`;
+                }
+            }
+            
+            // Function to update performance metrics
+            function updatePerformanceMetrics() {
+                const now = performance.now();
+                
+                // Calculate FPS
+                frameCount++;
+                if (now - lastFpsUpdateTime >= fpsUpdateInterval) {
+                    const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
+                    fpsValue.textContent = fps;
+                    frameCount = 0;
+                    lastFpsUpdateTime = now;
+                }
+                
+                // Calculate frame time
+                const frameTime = now - lastFrameTime;
+                frameTimeValue.textContent = frameTime.toFixed(1);
+                lastFrameTime = now;
+                
+                // Schedule next update
+                requestAnimationFrame(updatePerformanceMetrics);
+            }
+            
+            // Start performance monitoring
+            updatePerformanceMetrics();
+            
+            // Add scroll event listener to monitor performance during scrolling
+            tableContainer.addEventListener('scroll', () => {
+                // The performance metrics will be updated by the animation frame
+            });
+            
+            // Start processing
+            processBatch();
+        });
+    </script>
+</body>
+</html> 

@@ -28,7 +28,7 @@
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 600px;
+            max-width: 800px;
             width: 100%;
         }
 
@@ -43,6 +43,19 @@
             color: #636e72;
             font-size: 1.2rem;
             margin-bottom: 2.5rem;
+        }
+
+        .demo-group {
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .group-title {
+            color: #2d3436;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #6c5ce7;
         }
 
         .demo-buttons {
@@ -83,14 +96,51 @@
 <body>
     <div class="container">
         <h1>Technical Sharing 2025H1</h1>
-        <div class="subtitle">Demo Canvas vs WebGL</div>
-        <div class="demo-buttons">
-            <a href="canvas_vs_webgl/canvas_zoom_drag.html" class="demo-button">
-                Canvas 2D Demo - 1M Squares
-            </a>
-            <a href="canvas_vs_webgl/webgl_zoom_drag.html" class="demo-button">
-                WebGL Demo - 1M Squares
-            </a>
+        <div class="subtitle">Canvas Technology Demonstrations</div>
+        
+        <div class="demo-group">
+            <h2 class="group-title">Performance Comparisons</h2>
+            <div class="demo-buttons">
+                <a href="canvas_vs_webgl/canvas_zoom_drag.html" class="demo-button">
+                    Canvas 2D Demo - 1M Squares
+                </a>
+                <a href="canvas_vs_webgl/webgl_zoom_drag.html" class="demo-button">
+                    WebGL Demo - 1M Squares
+                </a>
+            </div>
+        </div>
+        
+        <div class="demo-group">
+            <h2 class="group-title">Accessibility</h2>
+            <div class="demo-buttons">
+                <a href="selection_dom_vs_canvas.html" class="demo-button">
+                    Highlight RTL/LTR mixed text
+                </a>
+            </div>
+        </div>
+        
+        <div class="demo-group">
+            <h2 class="group-title">Scrolling Performance</h2>
+            <div class="demo-buttons">
+                <a href="dom_table_no_virtualization.html" class="demo-button">
+                    DOM Table - 1M Rows (No Virtualization)
+                </a>
+                <a href="canvas_table_scrollable.html" class="demo-button">
+                    Canvas Table - 1M Rows (Scrollable)
+                </a>
+                <a href="dom_table_virtualized.html" class="demo-button">
+                    DOM Table - 1M Rows (Virtualized)
+                </a>
+            </div>
+        </div>
+        
+        <div class="demo-group">
+            <h2 class="group-title">Export Capabilities</h2>
+            <div class="demo-buttons">
+                <a href="export_pdf_canvas.html" class="demo-button">
+                    PDF Export with Canvas
+                </a>
+            </div>
         </div>
     </div>
 </body>

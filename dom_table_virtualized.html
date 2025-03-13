@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Table - 1M Rows (Virtualized)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background-color: #e0e7ff;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4834d4;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .table-container {
+            height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background-color: #6c5ce7;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        tr:hover {
+            background-color: #e0e7ff;
+            cursor: pointer;
+        }
+
+        .virtual-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+        }
+
+        .virtual-item {
+            position: absolute;
+            width: 100%;
+            pointer-events: auto;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6c5ce7;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .back-button:hover {
+            background-color: #5744d4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOM Table - 1M Rows (Virtualized)</h1>
+        <div class="stats" id="stats">Loading...</div>
+        
+        <div class="performance-metrics">
+            <div class="metric">
+                <div class="metric-value" id="fps-value">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="frame-time-value">0</div>
+                <div class="metric-label">Frame Time (ms)</div>
+            </div>
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+            <div class="loading">Generating 1,000,000 rows, please wait...</div>
+        </div>
+        <a href="index.html" class="back-button">Back to Home</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableContainer = document.getElementById('tableContainer');
+            const stats = document.getElementById('stats');
+            const fpsValue = document.getElementById('fps-value');
+            const frameTimeValue = document.getElementById('frame-time-value');
+            
+            const startTime = performance.now();
+            
+            // Performance monitoring variables
+            let frameCount = 0;
+            let lastFrameTime = performance.now();
+            let lastFpsUpdateTime = performance.now();
+            const fpsUpdateInterval = 1000; // Update FPS every second
+            
+            // Clear loading message
+            tableContainer.innerHTML = '';
+            
+            // Table configuration
+            const rowHeight = 40;
+            const headerHeight = 50;
+            const totalRows = 1000000;
+            const bufferSize = 10; // Extra rows to render above and below viewport
+            
+            // Column configuration
+            const columns = [
+                { name: 'ID', width: '80px' },
+                { name: 'Name', width: '200px' },
+                { name: 'Email', width: '300px' },
+                { name: 'Department', width: '150px' },
+                { name: 'Position', width: '150px' }
+            ];
+            
+            // Create table structure
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column.name;
+                th.style.width = column.width;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            tableContainer.appendChild(table);
+            
+            // Create virtual content container
+            const virtualContent = document.createElement('div');
+            virtualContent.className = 'virtual-content';
+            virtualContent.style.height = `${totalRows * rowHeight}px`;
+            virtualContent.style.paddingTop = `${headerHeight}px`;
+            table.appendChild(virtualContent);
+            
+            // Generate random data
+            const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Product', 'Design'];
+            const positions = ['Manager', 'Director', 'Associate', 'Intern', 'VP', 'Specialist', 'Lead'];
+            
+            const generateName = () => {
+                const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma'];
+                const lastNames = ['Smith', 'Johnson', 'Brown', 'Davis', 'Wilson', 'Miller', 'Jones', 'Garcia', 'Martinez', 'Williams'];
+                return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+            };
+            
+            const generateEmail = (name, id) => {
+                const nameParts = name.toLowerCase().split(' ');
+                return `${nameParts[0]}.${nameParts[1]}${id}@example.com`;
+            };
+            
+            // Function to get data for a specific row
+            function getRowData(rowIndex) {
+                // Cache data for better performance
+                if (!getRowData.cache) {
+                    getRowData.cache = new Map();
+                }
+                
+                if (getRowData.cache.has(rowIndex)) {
+                    return getRowData.cache.get(rowIndex);
+                }
+                
+                const name = generateName();
+                const department = departments[Math.floor(Math.random() * departments.length)];
+                const position = positions[Math.floor(Math.random() * positions.length)];
+                const email = generateEmail(name, rowIndex + 1);
+                
+                const data = [
+                    (rowIndex + 1).toString(),
+                    name,
+                    email,
+                    department,
+                    position
+                ];
+                
+                // Cache the result (limit cache size to prevent memory issues)
+                if (getRowData.cache.size > 1000) {
+                    // Remove oldest entry
+                    const firstKey = getRowData.cache.keys().next().value;
+                    getRowData.cache.delete(firstKey);
+                }
+                
+                getRowData.cache.set(rowIndex, data);
+                return data;
+            }
+            
+            // Create a row element
+            function createRowElement(rowIndex) {
+                const rowData = getRowData(rowIndex);
+                const row = document.createElement('div');
+                row.className = 'virtual-item';
+                row.style.height = `${rowHeight}px`;
+                row.style.top = `${headerHeight + (rowIndex * rowHeight)}px`;
+                
+                // Create row content
+                let rowHTML = '<table><tr>';
+                columns.forEach((column, colIndex) => {
+                    rowHTML += `<td style="width: ${column.width}">${rowData[colIndex]}</td>`;
+                });
+                rowHTML += '</tr></table>';
+                row.innerHTML = rowHTML;
+                
+                // Add hover effect
+                row.addEventListener('mouseenter', () => {
+                    row.style.backgroundColor = '#e0e7ff';
+                });
+                
+                row.addEventListener('mouseleave', () => {
+                    row.style.backgroundColor = '';
+                });
+                
+                return row;
+            }
+            
+            // Virtualization state
+            let visibleStartIndex = 0;
+            let visibleEndIndex = 0;
+            let renderedStartIndex = 0;
+            let renderedEndIndex = 0;
+            const renderedRows = new Map();
+            
+            // Render visible rows
+            function renderVisibleRows() {
+                const renderStart = performance.now();
+                
+                const scrollTop = tableContainer.scrollTop;
+                const containerHeight = tableContainer.clientHeight;
+                
+                // Calculate visible range
+                visibleStartIndex = Math.floor(scrollTop / rowHeight);
+                visibleEndIndex = Math.min(
+                    Math.ceil((scrollTop + containerHeight) / rowHeight),
+                    totalRows - 1
+                );
+                
+                // Calculate render range with buffer
+                const renderStartIndex = Math.max(0, visibleStartIndex - bufferSize);
+                const renderEndIndex = Math.min(totalRows - 1, visibleEndIndex + bufferSize);
+                
+                // Remove rows that are no longer visible
+                for (const [index, row] of renderedRows.entries()) {
+                    if (index < renderStartIndex || index > renderEndIndex) {
+                        virtualContent.removeChild(row);
+                        renderedRows.delete(index);
+                    }
+                }
+                
+                // Add new rows that became visible
+                for (let i = renderStartIndex; i <= renderEndIndex; i++) {
+                    if (!renderedRows.has(i)) {
+                        const row = createRowElement(i);
+                        virtualContent.appendChild(row);
+                        renderedRows.set(i, row);
+                    }
+                }
+                
+                renderedStartIndex = renderStartIndex;
+                renderedEndIndex = renderEndIndex;
+                
+                // Update stats
+                stats.textContent = `Viewing rows ${visibleStartIndex + 1} to ${visibleEndIndex + 1} of ${totalRows.toLocaleString()} (${renderedRows.size} DOM elements)`;
+                
+                const renderEnd = performance.now();
+                const renderTime = renderEnd - renderStart;
+                frameTimeValue.textContent = renderTime.toFixed(1);
+            }
+            
+            // Function to update performance metrics
+            function updatePerformanceMetrics() {
+                const now = performance.now();
+                
+                // Calculate FPS
+                frameCount++;
+                if (now - lastFpsUpdateTime >= fpsUpdateInterval) {
+                    const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
+                    fpsValue.textContent = fps;
+                    frameCount = 0;
+                    lastFpsUpdateTime = now;
+                }
+                
+                // Schedule next update
+                requestAnimationFrame(updatePerformanceMetrics);
+            }
+            
+            // Handle scroll events
+            tableContainer.addEventListener('scroll', () => {
+                window.requestAnimationFrame(renderVisibleRows);
+            });
+            
+            // Initial render
+            renderVisibleRows();
+            
+            // Start performance monitoring
+            updatePerformanceMetrics();
+            
+            // Report rendering time
+            const endTime = performance.now();
+            stats.textContent += ` (Initialized in ${((endTime - startTime) / 1000).toFixed(2)} seconds)`;
+        });
+    </script>
+</body>
+</html> 
