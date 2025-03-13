@@ -34,13 +34,45 @@
         .back-button:hover {
             background: rgba(0, 0, 0, 0.9);
         }
+        .fps-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
     <a href="../index.html" class="back-button">← Back</a>
+    <div class="fps-counter">FPS: <span id="fps">0</span></div>
     <canvas id="myCanvas"></canvas>
     <script>
         const canvas = document.getElementById('myCanvas');
+        const fpsDisplay = document.getElementById('fps');
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let fps = 0;
+
+        // Continuous FPS monitoring
+        function updateFPS(currentTime) {
+            if (!lastTime) lastTime = currentTime;
+            frameCount++;
+
+            const elapsed = currentTime - lastTime;
+            if (elapsed >= 1000) {
+                fps = Math.round((frameCount * 1000) / elapsed);
+                frameCount = 0;
+                lastTime = currentTime;
+                fpsDisplay.textContent = fps;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+        requestAnimationFrame(updateFPS);
 
         // Set canvas size to window size
         function resizeCanvas() {
@@ -69,7 +101,7 @@
             uniform vec2 u_offset;
             void main() {
                 vec2 pos = a_position * u_scale + u_offset;
-                vec2 normalized = pos / vec2(400.0, 300.0) - 1.0;
+                vec2 normalized = pos / vec2(${window.innerWidth}/2, ${window.innerHeight}/2) - 1.0;
                 gl_Position = vec4(normalized.x, -normalized.y, 0.0, 1.0); // Đảo trục Y
                 gl_PointSize = 2.0; // Kích thước điểm
             }
@@ -123,7 +155,14 @@
             gl.uniform1f(scaleLocation, scale);
             gl.uniform2f(offsetLocation, offsetX, offsetY);
             gl.drawArrays(gl.POINTS, 0, 1000000);
+
+            if (isDragging) {
+                requestAnimationFrame(draw);
+            }
         }
+
+        // Initial draw
+        requestAnimationFrame(draw);
 
         // Zoom
         canvas.addEventListener('wheel', (e) => {
@@ -133,35 +172,39 @@
             scale *= (e.deltaY < 0) ? (1 + zoomSpeed) : (1 - zoomSpeed);
             scale = Math.max(0.1, Math.min(scale, 10));
 
-            const mouseX = e.clientX - canvas.offsetLeft;
-            const mouseY = e.clientY - canvas.offsetTop;
-            offsetX = (mouseX - offsetX) * (scale / oldScale) - mouseX + offsetX;
-            offsetY = (mouseY - offsetY) * (scale / oldScale) - mouseY + offsetY;
+            // Calculate center of view
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
 
-            draw();
+            // Adjust offset to keep the center point fixed
+            offsetX = centerX - (centerX - offsetX) * (scale / oldScale);
+            offsetY = centerY - (centerY - offsetY) * (scale / oldScale);
+
+            requestAnimationFrame(draw);
         });
 
         // Drag
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
-            startX = e.clientX - offsetX;
-            startY = e.clientY - offsetY;
+            startX = e.clientX;
+            startY = e.clientY;
+            requestAnimationFrame(draw);  // Start the animation loop
         });
 
         canvas.addEventListener('mousemove', (e) => {
             if (isDragging) {
-                offsetX = e.clientX - startX;
-                offsetY = e.clientY - startY;
-                draw();
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                offsetX += dx;
+                offsetY += dy;
+                startX = e.clientX;
+                startY = e.clientY;
             }
         });
 
         canvas.addEventListener('mouseup', () => {
             isDragging = false;
         });
-
-        // Vẽ lần đầu
-        draw();
     </script>
 </body>
 </html>
