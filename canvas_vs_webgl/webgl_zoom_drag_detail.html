@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Canvas 2D - 1M Squares (Zoom & Drag)</title>
+    <title>WebGL - 1M Squares (Zoom & Drag)</title>
     <style>
         * {
             margin: 0;
@@ -62,7 +62,7 @@
     <a href="../index.html" class="back-button">← Back</a>
     <div class="fps-counter">FPS: <span id="fps">0</span></div>
     <div class="info-panel">
-        <p>Canvas 2D rendering</p>
+        <p>WebGL with hardware acceleration</p>
         <p>Rendering 1,000,000 squares</p>
         <p>Visible: <span id="visibleCount">0</span></p>
     </div>
@@ -101,17 +101,18 @@
         resizeCanvas();
         window.addEventListener('resize', () => {
             resizeCanvas();
+            gl.viewport(0, 0, canvas.width, canvas.height);
             draw();
         });
 
-        const ctx = canvas.getContext('2d');
+        const gl = canvas.getContext('webgl');
         let scale = 1.0;
         let offsetX = 0, offsetY = 0;
         let isDragging = false;
         let startX, startY;
-        const objects = [];
 
-        // Tạo 1 triệu hình vuông ngẫu nhiên (không gian 2000x2000)
+        // Create objects array - same as Canvas example
+        const objects = [];
         for (let i = 0; i < 1000000; i++) {
             objects.push({
                 x: Math.random() * 2000,
@@ -120,26 +121,135 @@
             });
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.scale(scale, scale);
+        // Vertex shader
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            uniform mat3 u_matrix;
+            uniform vec2 u_resolution;
 
-            // Culling để tối ưu
+            void main() {
+                // Apply transformation matrix
+                vec3 position = u_matrix * vec3(a_position, 1);
+
+                // Convert to clip space
+                vec2 clipSpace = position.xy / u_resolution * 2.0 - 1.0;
+                gl_Position = vec4(clipSpace.x, -clipSpace.y, 0, 1);
+            }
+        `;
+
+        // Fragment shader
+        const fragmentShaderSource = `
+            precision mediump float;
+
+            void main() {
+                gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); // Blue
+            }
+        `;
+
+        // Create shader
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        // Create program
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Program linking error:', gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        // Get attribute and uniform locations
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+        const matrixLocation = gl.getUniformLocation(program, 'u_matrix');
+        const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+
+        // Create position buffer
+        const positionBuffer = gl.createBuffer();
+
+        // Clear color
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+
+        // Check if visible in viewport
+        function isVisible(obj) {
+            const screenX = obj.x * scale + offsetX;
+            const screenY = obj.y * scale + offsetY;
+            const screenSize = obj.size * scale;
+
+            return !(screenX + screenSize < 0 ||
+                    screenX > canvas.width ||
+                    screenY + screenSize < 0 ||
+                    screenY > canvas.height);
+        }
+
+        function draw() {
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // Set resolution uniform
+            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+
+            // Count visible objects
             let visibleCount = 0;
+
+            // Draw each rectangle individually - similar to Canvas approach
             for (let i = 0; i < objects.length; i++) {
                 const obj = objects[i];
-                const screenX = obj.x * scale + offsetX;
-                const screenY = obj.y * scale + offsetY;
-                if (screenX < -obj.size || screenX > canvas.width || screenY < -obj.size || screenY > canvas.height) continue;
 
-                ctx.fillStyle = 'blue';
-                ctx.fillRect(obj.x, obj.y, obj.size, obj.size);
+                // Culling optimization - same as Canvas example
+                if (!isVisible(obj)) continue;
+
                 visibleCount++;
+
+                // Create rectangle vertices
+                const x = obj.x;
+                const y = obj.y;
+                const size = obj.size;
+
+                const vertices = new Float32Array([
+                    x, y,               // bottom-left
+                    x + size, y,        // bottom-right
+                    x, y + size,        // top-left
+                    x, y + size,        // top-left
+                    x + size, y,        // bottom-right
+                    x + size, y + size  // top-right
+                ]);
+
+                // Update buffer with new vertices
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+                gl.enableVertexAttribArray(positionLocation);
+                gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+                // Set transformation matrix (scale and translate)
+                const matrix = [
+                    scale, 0, 0,
+                    0, scale, 0,
+                    offsetX, offsetY, 1
+                ];
+                gl.uniformMatrix3fv(matrixLocation, false, matrix);
+
+                // Draw the rectangle
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
-            ctx.restore();
-            
+
             // Update visible count display
             visibleCountDisplay.textContent = visibleCount;
 
@@ -151,7 +261,7 @@
         // Initial draw
         requestAnimationFrame(draw);
 
-        // Zoom bằng wheel chuột
+        // Zoom
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomSpeed = 0.1;
@@ -170,7 +280,7 @@
             requestAnimationFrame(draw);
         });
 
-        // Drag bằng chuột
+        // Drag
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.clientX;

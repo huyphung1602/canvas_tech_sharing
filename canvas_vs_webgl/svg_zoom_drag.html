@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Canvas 2D - 1M Squares (Zoom & Drag)</title>
+    <title>SVG - 1M Squares (Zoom & Drag)</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
-        canvas {
+        svg {
             display: block;
             width: 100vw;
             height: 100vh;
@@ -62,13 +62,12 @@
     <a href="../index.html" class="back-button">← Back</a>
     <div class="fps-counter">FPS: <span id="fps">0</span></div>
     <div class="info-panel">
-        <p>Canvas 2D rendering</p>
-        <p>Rendering 1,000,000 squares</p>
-        <p>Visible: <span id="visibleCount">0</span></p>
+        <p>SVG with optimized rendering (only visible elements)</p>
+        <p>Squares: <span id="visibleCount">0</span> / 1,000,000</p>
     </div>
-    <canvas id="myCanvas"></canvas>
+    <svg id="svgContainer"></svg>
     <script>
-        const canvas = document.getElementById('myCanvas');
+        const svg = document.getElementById('svgContainer');
         const fpsDisplay = document.getElementById('fps');
         const visibleCountDisplay = document.getElementById('visibleCount');
         let frameCount = 0;
@@ -91,57 +90,92 @@
         }
         requestAnimationFrame(updateFPS);
 
-        // Set canvas size to window size
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // Set SVG viewBox
+        function resizeSVG() {
+            svg.setAttribute('width', window.innerWidth);
+            svg.setAttribute('height', window.innerHeight);
         }
 
         // Initial resize and add event listener
-        resizeCanvas();
+        resizeSVG();
         window.addEventListener('resize', () => {
-            resizeCanvas();
+            resizeSVG();
             draw();
         });
 
-        const ctx = canvas.getContext('2d');
+        // Create SVG group for transformation
+        const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        svg.appendChild(mainGroup);
+
         let scale = 1.0;
         let offsetX = 0, offsetY = 0;
         let isDragging = false;
         let startX, startY;
         const objects = [];
+        const visibleObjects = new Set();
 
-        // Tạo 1 triệu hình vuông ngẫu nhiên (không gian 2000x2000)
+        // Generate 1 million squares (same space as Canvas/WebGL examples: 2000x2000)
         for (let i = 0; i < 1000000; i++) {
             objects.push({
                 x: Math.random() * 2000,
                 y: Math.random() * 2000,
-                size: 2
+                size: 2,
+                element: null
             });
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.scale(scale, scale);
+        function updateTransform() {
+            mainGroup.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
+        }
 
-            // Culling để tối ưu
-            let visibleCount = 0;
+        function isVisible(obj) {
+            const screenX = obj.x * scale + offsetX;
+            const screenY = obj.y * scale + offsetY;
+            const scaledSize = obj.size * scale;
+
+            return !(
+                screenX + scaledSize < 0 ||
+                screenX > window.innerWidth ||
+                screenY + scaledSize < 0 ||
+                screenY > window.innerHeight
+            );
+        }
+
+        function draw() {
+            // Update transform
+            updateTransform();
+
+            // Optimization: Only render visible squares
+            const newVisibleObjects = new Set();
+
+            // First pass: identify visible objects
             for (let i = 0; i < objects.length; i++) {
                 const obj = objects[i];
-                const screenX = obj.x * scale + offsetX;
-                const screenY = obj.y * scale + offsetY;
-                if (screenX < -obj.size || screenX > canvas.width || screenY < -obj.size || screenY > canvas.height) continue;
+                if (isVisible(obj)) {
+                    newVisibleObjects.add(i);
 
-                ctx.fillStyle = 'blue';
-                ctx.fillRect(obj.x, obj.y, obj.size, obj.size);
-                visibleCount++;
+                    // Create element if it doesn't exist
+                    if (!obj.element) {
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', obj.x);
+                        rect.setAttribute('y', obj.y);
+                        rect.setAttribute('width', obj.size);
+                        rect.setAttribute('height', obj.size);
+                        rect.setAttribute('fill', 'blue');
+                        obj.element = rect;
+                        mainGroup.appendChild(rect);
+                    }
+                } else if (obj.element) {
+                    // Remove elements that are no longer visible
+                    mainGroup.removeChild(obj.element);
+                    obj.element = null;
+                }
             }
-            ctx.restore();
-            
-            // Update visible count display
-            visibleCountDisplay.textContent = visibleCount;
+
+            // Update visible count
+            visibleCountDisplay.textContent = newVisibleObjects.size;
+            visibleObjects.clear();
+            newVisibleObjects.forEach(idx => visibleObjects.add(idx));
 
             if (isDragging) {
                 requestAnimationFrame(draw);
@@ -151,8 +185,8 @@
         // Initial draw
         requestAnimationFrame(draw);
 
-        // Zoom bằng wheel chuột
-        canvas.addEventListener('wheel', (e) => {
+        // Zoom with mouse wheel
+        svg.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomSpeed = 0.1;
             const oldScale = scale;
@@ -160,8 +194,8 @@
             scale = Math.max(0.1, Math.min(scale, 10));
 
             // Calculate center of view
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
 
             // Adjust offset to keep the center point fixed
             offsetX = centerX - (centerX - offsetX) * (scale / oldScale);
@@ -170,15 +204,15 @@
             requestAnimationFrame(draw);
         });
 
-        // Drag bằng chuột
-        canvas.addEventListener('mousedown', (e) => {
+        // Drag with mouse
+        svg.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
             requestAnimationFrame(draw);  // Start the animation loop
         });
 
-        canvas.addEventListener('mousemove', (e) => {
+        svg.addEventListener('mousemove', (e) => {
             if (isDragging) {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
@@ -189,12 +223,12 @@
             }
         });
 
-        canvas.addEventListener('mouseup', () => {
+        svg.addEventListener('mouseup', () => {
             isDragging = false;
         });
 
         // Touch support for mobile devices
-        canvas.addEventListener('touchstart', (e) => {
+        svg.addEventListener('touchstart', (e) => {
             e.preventDefault();
             isDragging = true;
             startX = e.touches[0].clientX;
@@ -202,7 +236,7 @@
             requestAnimationFrame(draw);
         });
 
-        canvas.addEventListener('touchmove', (e) => {
+        svg.addEventListener('touchmove', (e) => {
             if (isDragging) {
                 const dx = e.touches[0].clientX - startX;
                 const dy = e.touches[0].clientY - startY;
@@ -213,7 +247,7 @@
             }
         });
 
-        canvas.addEventListener('touchend', () => {
+        svg.addEventListener('touchend', () => {
             isDragging = false;
         });
     </script>

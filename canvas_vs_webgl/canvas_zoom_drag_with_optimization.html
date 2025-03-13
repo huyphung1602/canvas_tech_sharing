@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Canvas 2D - 1M Squares (Zoom & Drag)</title>
+    <title>Canvas 2D - 1M Squares (Optimized)</title>
     <style>
         * {
             margin: 0;
@@ -62,9 +62,11 @@
     <a href="../index.html" class="back-button">← Back</a>
     <div class="fps-counter">FPS: <span id="fps">0</span></div>
     <div class="info-panel">
-        <p>Canvas 2D rendering</p>
-        <p>Rendering 1,000,000 squares</p>
-        <p>Visible: <span id="visibleCount">0</span></p>
+        <p>Canvas 2D with optimizations:</p>
+        <p>- Spatial partitioning (grid)</p>
+        <p>- Batch rendering</p>
+        <p>- Off-screen buffering</p>
+        <p>Visible: <span id="visibleCount">0</span> / 1,000,000</p>
     </div>
     <canvas id="myCanvas"></canvas>
     <script>
@@ -101,17 +103,32 @@
         resizeCanvas();
         window.addEventListener('resize', () => {
             resizeCanvas();
+            createBufferCanvas(); // Create buffer canvas after resize
             draw();
         });
 
         const ctx = canvas.getContext('2d');
+
+        // Create off-screen buffer canvas for better performance
+        let bufferCanvas, bufferCtx;
+
+        function createBufferCanvas() {
+            bufferCanvas = document.createElement('canvas');
+            bufferCanvas.width = canvas.width;
+            bufferCanvas.height = canvas.height;
+            bufferCtx = bufferCanvas.getContext('2d');
+        }
+
+        // Initialize buffer canvas
+        createBufferCanvas();
+
         let scale = 1.0;
         let offsetX = 0, offsetY = 0;
         let isDragging = false;
         let startX, startY;
         const objects = [];
 
-        // Tạo 1 triệu hình vuông ngẫu nhiên (không gian 2000x2000)
+        // Generate 1 million squares (same space as other examples: 2000x2000)
         for (let i = 0; i < 1000000; i++) {
             objects.push({
                 x: Math.random() * 2000,
@@ -120,28 +137,105 @@
             });
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.scale(scale, scale);
+        // Spatial partitioning using a grid for faster culling
+        const GRID_CELL_SIZE = 100; // Size of each grid cell
+        const GRID_WIDTH = Math.ceil(2000 / GRID_CELL_SIZE);
+        const GRID_HEIGHT = Math.ceil(2000 / GRID_CELL_SIZE);
+        const grid = new Array(GRID_WIDTH * GRID_HEIGHT);
 
-            // Culling để tối ưu
-            let visibleCount = 0;
-            for (let i = 0; i < objects.length; i++) {
-                const obj = objects[i];
-                const screenX = obj.x * scale + offsetX;
-                const screenY = obj.y * scale + offsetY;
-                if (screenX < -obj.size || screenX > canvas.width || screenY < -obj.size || screenY > canvas.height) continue;
+        // Initialize grid
+        for (let i = 0; i < grid.length; i++) {
+            grid[i] = [];
+        }
 
-                ctx.fillStyle = 'blue';
-                ctx.fillRect(obj.x, obj.y, obj.size, obj.size);
-                visibleCount++;
+        // Place objects in grid cells
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            const gridX = Math.floor(obj.x / GRID_CELL_SIZE);
+            const gridY = Math.floor(obj.y / GRID_CELL_SIZE);
+
+            if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT) {
+                const cellIndex = gridY * GRID_WIDTH + gridX;
+                grid[cellIndex].push(i);
             }
-            ctx.restore();
-            
+        }
+
+        // Function to get visible grid cells
+        function getVisibleCells() {
+            // Calculate visible area in world coordinates
+            const visibleLeft = -offsetX / scale;
+            const visibleTop = -offsetY / scale;
+            const visibleRight = (canvas.width - offsetX) / scale;
+            const visibleBottom = (canvas.height - offsetY) / scale;
+
+            // Convert to grid coordinates
+            const startGridX = Math.max(0, Math.floor(visibleLeft / GRID_CELL_SIZE));
+            const startGridY = Math.max(0, Math.floor(visibleTop / GRID_CELL_SIZE));
+            const endGridX = Math.min(GRID_WIDTH - 1, Math.ceil(visibleRight / GRID_CELL_SIZE));
+            const endGridY = Math.min(GRID_HEIGHT - 1, Math.ceil(visibleBottom / GRID_CELL_SIZE));
+
+            const visibleCells = [];
+
+            // Collect all visible cells
+            for (let gridY = startGridY; gridY <= endGridY; gridY++) {
+                for (let gridX = startGridX; gridX <= endGridX; gridX++) {
+                    const cellIndex = gridY * GRID_WIDTH + gridX;
+                    visibleCells.push(cellIndex);
+                }
+            }
+
+            return visibleCells;
+        }
+
+        function draw() {
+            // Clear buffer canvas
+            bufferCtx.clearRect(0, 0, bufferCanvas.width, bufferCanvas.height);
+
+            // Set up transformation on buffer canvas
+            bufferCtx.save();
+            bufferCtx.translate(offsetX, offsetY);
+            bufferCtx.scale(scale, scale);
+
+            // Get visible grid cells
+            const visibleCells = getVisibleCells();
+            let visibleCount = 0;
+
+            // Batch rendering - draw all squares with a single fill style
+            bufferCtx.fillStyle = 'blue';
+
+            // Draw only objects in visible cells
+            for (let i = 0; i < visibleCells.length; i++) {
+                const cellIndex = visibleCells[i];
+                const cellObjects = grid[cellIndex];
+
+                if (!cellObjects) continue;
+
+                for (let j = 0; j < cellObjects.length; j++) {
+                    const objIndex = cellObjects[j];
+                    const obj = objects[objIndex];
+
+                    // Additional fine-grained culling for objects at cell edges
+                    const screenX = obj.x * scale + offsetX;
+                    const screenY = obj.y * scale + offsetY;
+                    if (screenX < -obj.size * scale ||
+                        screenX > canvas.width ||
+                        screenY < -obj.size * scale ||
+                        screenY > canvas.height) continue;
+
+                    // Draw the square
+                    bufferCtx.fillRect(obj.x, obj.y, obj.size, obj.size);
+                    visibleCount++;
+                }
+            }
+
+            bufferCtx.restore();
+
             // Update visible count display
             visibleCountDisplay.textContent = visibleCount;
+
+            // Copy buffer to main canvas (single draw operation)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(bufferCanvas, 0, 0);
 
             if (isDragging) {
                 requestAnimationFrame(draw);
@@ -151,7 +245,7 @@
         // Initial draw
         requestAnimationFrame(draw);
 
-        // Zoom bằng wheel chuột
+        // Zoom with mouse wheel
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomSpeed = 0.1;
@@ -170,7 +264,7 @@
             requestAnimationFrame(draw);
         });
 
-        // Drag bằng chuột
+        // Drag with mouse
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             startX = e.clientX;
