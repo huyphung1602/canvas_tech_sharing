@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pretty 3D Cat - Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #0047ab, #1e90ff, #87ceeb, #e0f7fa);
+        }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Click and drag to control manually | Scroll to zoom</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Setup scene, camera, renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Set a sky blue background color
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            alpha: true // Enable transparency
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x87ceeb, 1); // Set a fallback sky blue color
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+        document.body.appendChild(renderer.domElement);
+
+        // Add a sky with clouds
+        function createSky() {
+            const skyGroup = new THREE.Group();
+            
+            // Create a large dome for the sky - make it much larger to ensure it surrounds everything
+            const skyGeometry = new THREE.SphereGeometry(900, 32, 32);
+            // Only show the inside of the sphere
+            skyGeometry.scale(-1, 1, 1);
+            
+            // Create a gradient texture for the sky
+            const skyTexture = new function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 1024;
+                const context = canvas.getContext('2d');
+                
+                // Create a gradient from top to bottom with more vibrant blues
+                const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#0047ab'); // Cobalt blue at the top
+                gradient.addColorStop(0.3, '#1e90ff'); // Dodger blue
+                gradient.addColorStop(0.6, '#87ceeb'); // Sky blue
+                gradient.addColorStop(1, '#e0f7fa'); // Light blue/white at the horizon
+                
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Add some subtle atmospheric haze
+                context.globalAlpha = 0.1;
+                for (let i = 0; i < 5; i++) {
+                    const y = canvas.height * (0.6 + i * 0.08);
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, y, canvas.width, canvas.height * 0.05);
+                }
+                context.globalAlpha = 1.0;
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                return texture;
+            }();
+            
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                map: skyTexture,
+                side: THREE.BackSide,
+                fog: false // Ensure the sky isn't affected by fog
+            });
+            
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            skyGroup.add(sky);
+            
+            // Add a sun with rays
+            function createSun() {
+                const sunGroup = new THREE.Group();
+                
+                // Sun disc
+                const sunGeometry = new THREE.CircleGeometry(15, 32);
+                const sunMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffdd66,
+                    side: THREE.DoubleSide
+                });
+                const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+                sunGroup.add(sun);
+                
+                // Sun glow
+                const glowGeometry = new THREE.CircleGeometry(30, 32);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffeeaa,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                glow.position.z = -0.1;
+                sunGroup.add(glow);
+                
+                // Outer glow
+                const outerGlowGeometry = new THREE.CircleGeometry(45, 32);
+                const outerGlowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.DoubleSide
+                });
+                const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+                outerGlow.position.z = -0.2;
+                sunGroup.add(outerGlow);
+                
+                // Sun rays
+                const rayCount = 16;
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = (i / rayCount) * Math.PI * 2;
+                    const length = 25 + Math.random() * 20;
+                    
+                    const rayGeometry = new THREE.PlaneGeometry(1.5, length);
+                    // Move the origin to the bottom of the ray
+                    rayGeometry.translate(0, length/2, 0);
+                    
+                    const rayMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xffee99,
+                        transparent: true,
+                        opacity: 0.6 - Math.random() * 0.2,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const ray = new THREE.Mesh(rayGeometry, rayMaterial);
+                    ray.position.set(0, 0, -0.2);
+                    ray.rotation.z = angle;
+                    
+                    sunGroup.add(ray);
+                }
+                
+                // Position the sun in the sky
+                sunGroup.position.set(180, 120, -350);
+                sunGroup.rotation.y = Math.PI / 6;
+                
+                return sunGroup;
+            }
+            
+            const sun = createSun();
+            skyGroup.add(sun);
+            
+            // Add a light source at the sun's position
+            const sunLight = new THREE.DirectionalLight(0xffffcc, 1.0);
+            sunLight.position.set(180, 120, -350); // Same as sun position
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 1000;
+            sunLight.shadow.camera.left = -100;
+            sunLight.shadow.camera.right = 100;
+            sunLight.shadow.camera.top = 100;
+            sunLight.shadow.camera.bottom = -100;
+            skyGroup.add(sunLight);
+            
+            // Add clouds
+            function createCloud(x, y, z, scale) {
+                const cloudGroup = new THREE.Group();
+                
+                // Create a cloud using multiple spheres
+                const cloudMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    emissive: 0x555555,
+                    emissiveIntensity: 0.1,
+                    transparent: true,
+                    opacity: 0.9,
+                    flatShading: true
+                });
+                
+                // Create a fluffy cloud with multiple overlapping spheres
+                const positions = [
+                    { x: 0, y: 0, z: 0, r: 1.0 },
+                    { x: 1.2, y: 0.3, z: 0.3, r: 0.9 },
+                    { x: -1.0, y: 0.2, z: -0.2, r: 0.8 },
+                    { x: 0.5, y: -0.2, z: 0.8, r: 0.7 },
+                    { x: -0.7, y: -0.3, z: -0.6, r: 0.7 },
+                    { x: -0.5, y: 0.4, z: 0.5, r: 0.6 },
+                    { x: 0.7, y: 0.3, z: -0.5, r: 0.8 }
+                ];
+                
+                positions.forEach(pos => {
+                    const puff = new THREE.Mesh(
+                        new THREE.SphereGeometry(pos.r, 8, 8),
+                        cloudMaterial.clone()
+                    );
+                    puff.position.set(pos.x, pos.y, pos.z);
+                    cloudGroup.add(puff);
+                });
+                
+                // Scale and position the cloud
+                cloudGroup.scale.set(scale, scale * 0.6, scale);
+                cloudGroup.position.set(x, y, z);
+                
+                return cloudGroup;
+            }
+            
+            // Add several clouds at different positions
+            const clouds = [
+                createCloud(50, 80, -100, 15),
+                createCloud(-80, 100, -150, 20),
+                createCloud(100, 90, -200, 25),
+                createCloud(-120, 70, -120, 18),
+                createCloud(150, 85, -180, 22),
+                createCloud(-40, 95, -220, 20),
+                createCloud(70, 75, -250, 30),
+                createCloud(-150, 110, -180, 25),
+                // Add more distant clouds for depth
+                createCloud(200, 60, -400, 35),
+                createCloud(-220, 90, -350, 30),
+                createCloud(120, 70, -300, 25),
+                createCloud(-180, 85, -420, 40)
+            ];
+            
+            clouds.forEach(cloud => {
+                skyGroup.add(cloud);
+                // Add a slight random rotation to each cloud
+                cloud.rotation.y = Math.random() * Math.PI * 2;
+            });
+            
+            // Add birds flying in the sky
+            function createBird() {
+                const birdGroup = new THREE.Group();
+                
+                // Create a simple bird shape using triangles
+                const wingSpan = 1.0 + Math.random() * 0.5;
+                const bodyLength = 0.6 + Math.random() * 0.3;
+                
+                // Bird body
+                const bodyGeometry = new THREE.ConeGeometry(0.15, bodyLength, 4);
+                bodyGeometry.rotateX(Math.PI / 2);
+                const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                birdGroup.add(body);
+                
+                // Left wing
+                const leftWingGeometry = new THREE.BufferGeometry();
+                const leftWingVertices = new Float32Array([
+                    0, 0, 0,
+                    -wingSpan, 0, -bodyLength/3,
+                    0, 0, -bodyLength/2
+                ]);
+                leftWingGeometry.setAttribute('position', new THREE.BufferAttribute(leftWingVertices, 3));
+                leftWingGeometry.computeVertexNormals();
+                const leftWing = new THREE.Mesh(leftWingGeometry, bodyMaterial);
+                birdGroup.add(leftWing);
+                
+                // Right wing
+                const rightWingGeometry = new THREE.BufferGeometry();
+                const rightWingVertices = new Float32Array([
+                    0, 0, 0,
+                    wingSpan, 0, -bodyLength/3,
+                    0, 0, -bodyLength/2
+                ]);
+                rightWingGeometry.setAttribute('position', new THREE.BufferAttribute(rightWingVertices, 3));
+                rightWingGeometry.computeVertexNormals();
+                const rightWing = new THREE.Mesh(rightWingGeometry, bodyMaterial);
+                birdGroup.add(rightWing);
+                
+                // Animation properties
+                birdGroup.userData = {
+                    wingFlapSpeed: 0.1 + Math.random() * 0.2,
+                    wingFlapAmount: 0.2 + Math.random() * 0.3,
+                    flySpeed: 0.05 + Math.random() * 0.1,
+                    circleRadius: 20 + Math.random() * 30,
+                    circleHeight: Math.random() * 10,
+                    startAngle: Math.random() * Math.PI * 2,
+                    verticalSpeed: 0.02 + Math.random() * 0.03,
+                    verticalAmount: 1 + Math.random() * 2
+                };
+                
+                return birdGroup;
+            }
+            
+            // Add a flock of birds
+            const birds = [];
+            const birdCount = 12;
+            
+            for (let i = 0; i < birdCount; i++) {
+                const bird = createBird();
+                
+                // Position birds at random locations in the sky
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 50 + Math.random() * 200;
+                const height = 30 + Math.random() * 100;
+                
+                bird.position.set(
+                    Math.cos(angle) * radius,
+                    height,
+                    Math.sin(angle) * radius
+                );
+                
+                // Random rotation
+                bird.rotation.y = Math.random() * Math.PI * 2;
+                
+                birds.push(bird);
+                skyGroup.add(bird);
+            }
+            
+            return skyGroup;
+        }
+        
+        // Add the sky to the scene
+        const sky = createSky();
+        scene.add(sky);
+
+        // Add orbit controls for interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true; // Enable auto-rotation
+        controls.autoRotateSpeed = 1.0; // Speed of rotation
+
+        // Variables to track user interaction
+        let userInteracting = false;
+        let interactionTimeout;
+
+        controls.addEventListener('start', function() {
+            userInteracting = true;
+            controls.autoRotate = false;
+            clearTimeout(interactionTimeout);
+        });
+
+        controls.addEventListener('end', function() {
+            clearTimeout(interactionTimeout);
+            interactionTimeout = setTimeout(function() {
+                userInteracting = false;
+                controls.autoRotate = true;
+            }, 3000); // Resume auto-rotation after 3 seconds of inactivity
+        });
+
+        // Lighting
+        // Ambient light for overall illumination - make it slightly blue to match sky
+        const ambientLight = new THREE.AmbientLight(0xccddff, 0.6);
+        scene.add(ambientLight);
+
+        // Main directional light (like sunlight) - we'll use the sun's light instead
+        // const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        // mainLight.position.set(5, 10, 7);
+        // mainLight.castShadow = true;
+        // mainLight.shadow.mapSize.width = 2048;
+        // mainLight.shadow.mapSize.height = 2048;
+        // mainLight.shadow.camera.near = 0.5;
+        // mainLight.shadow.camera.far = 50;
+        // mainLight.shadow.camera.left = -10;
+        // mainLight.shadow.camera.right = 10;
+        // mainLight.shadow.camera.top = 10;
+        // mainLight.shadow.camera.bottom = -10;
+        // mainLight.shadow.bias = -0.0005;
+        // scene.add(mainLight);
+
+        // Fill light from opposite side - make it slightly blue to match sky
+        const fillLight = new THREE.DirectionalLight(0xddeeff, 0.4);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+
+        // Soft light from below for more dimension - make it slightly green to simulate grass reflection
+        const bottomLight = new THREE.DirectionalLight(0xaaddff, 0.2);
+        bottomLight.position.set(0, -3, 0);
+        scene.add(bottomLight);
+
+        // Create a group for the cat
+        const cat = new THREE.Group();
+        scene.add(cat);
+
+        // Position the cat at the right height to touch the ground
+        cat.position.y = -1.5; // Position cat directly on the floor plane instead of on top of grass
+
+        // Materials with better textures
+        const catFurMaterial = new THREE.MeshPhongMaterial({
+            color: 0xe0a070,  // Warmer, more natural orange/tan color
+            specular: 0x333333,
+            shininess: 15,
+            flatShading: false
+        });
+
+        // Create a fur-like texture for the cat
+        const furTexture = new function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+
+            // Fill with base color
+            context.fillStyle = '#e0a070';
+            context.fillRect(0, 0, 256, 256);
+
+            // Add fur-like pattern
+            for (let i = 0; i < 10000; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const length = Math.random() * 3 + 1;
+                const angle = Math.random() * Math.PI * 2;
+
+                context.strokeStyle = Math.random() > 0.5 ? '#d08050' : '#f0b080';
+                context.beginPath();
+                context.moveTo(x, y);
+                context.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+                context.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }();
+
+        // Apply the fur texture to the cat material
+        catFurMaterial.map = furTexture;
+
+        const catEyeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x44aa00,  // Green eyes
+            specular: 0xffffff,
+            shininess: 100,
+            emissive: 0x113300,
+            emissiveIntensity: 0.2
+        });
+
+        const catNoseMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff9999,  // Pink nose
+            specular: 0x222222,
+            shininess: 30
+        });
+
+        const catEarMaterial = new THREE.MeshPhongMaterial({
+            color: 0xc07040,  // Slightly darker than body
+            specular: 0x222222,
+            shininess: 5,
+            map: furTexture  // Apply fur texture to ears too
+        });
+
+        const catPawMaterial = new THREE.MeshPhongMaterial({
+            color: 0xc07040,  // Slightly darker than body
+            specular: 0x222222,
+            shininess: 5,
+            map: furTexture  // Apply fur texture to paws too
+        });
+
+        // Create a group for the cat body to allow better positioning
+        const catBody = new THREE.Group();
+        cat.add(catBody);
+
+        // Cat body with more angular, compact shape
+        // Main body - using a box for more defined shape
+        const torsoGeometry = new THREE.BoxGeometry(1.8, 1.0, 2.6);
+        const torso = new THREE.Mesh(torsoGeometry, catFurMaterial);
+        torso.position.y = 1.2;
+        torso.position.z = -0.1;
+        torso.castShadow = true;
+        catBody.add(torso);
+
+        // Add rounded torso overlay
+        const torsoSphereGeometry = new THREE.SphereGeometry(0.9, 24, 24);
+        const torsoSphere = new THREE.Mesh(torsoSphereGeometry, catFurMaterial);
+        torsoSphere.position.set(0, 1.2, -0.1);
+        torsoSphere.scale.set(1.2, 0.7, 1.6);
+        torsoSphere.castShadow = true;
+        catBody.add(torsoSphere);
+
+        // Chest/shoulders - more angular and compact
+        const chestGeometry = new THREE.BoxGeometry(1.6, 0.9, 0.8);
+        const chest = new THREE.Mesh(chestGeometry, catFurMaterial);
+        chest.position.y = 1.2;
+        chest.position.z = 1.0;
+        chest.castShadow = true;
+        catBody.add(chest);
+
+        // Add rounded chest overlay
+        const chestSphereGeometry = new THREE.SphereGeometry(0.8, 24, 24);
+        const chestSphere = new THREE.Mesh(chestSphereGeometry, catFurMaterial);
+        chestSphere.position.set(0, 1.2, 1.0);
+        chestSphere.scale.set(1.1, 0.7, 0.6);
+        chestSphere.castShadow = true;
+        catBody.add(chestSphere);
+
+        // Lower back/haunches - slightly higher and more angular
+        const haunchesGeometry = new THREE.BoxGeometry(1.6, 1.0, 0.8);
+        const haunches = new THREE.Mesh(haunchesGeometry, catFurMaterial);
+        haunches.position.y = 1.3;
+        haunches.position.z = -1.3;
+        haunches.castShadow = true;
+        catBody.add(haunches);
+
+        // Add rounded haunches overlay
+        const haunchesSphereGeometry = new THREE.SphereGeometry(0.8, 24, 24);
+        const haunchesSphere = new THREE.Mesh(haunchesSphereGeometry, catFurMaterial);
+        haunchesSphere.position.set(0, 1.3, -1.3);
+        haunchesSphere.scale.set(1.1, 0.7, 0.6);
+        haunchesSphere.castShadow = true;
+        catBody.add(haunchesSphere);
+
+        // Neck - to connect body and head smoothly
+        const neckGeometry = new THREE.CylinderGeometry(0.5, 0.7, 0.4, 8);
+        neckGeometry.rotateX(Math.PI / 2.5);
+        const neck = new THREE.Mesh(neckGeometry, catFurMaterial);
+        neck.position.set(0, 1.7, 1.3);
+        neck.castShadow = true;
+        catBody.add(neck);
+
+        // Cat head - using only a sphere for a rounded shape
+        const headGeometry = new THREE.SphereGeometry(0.8, 24, 24);
+        const head = new THREE.Mesh(headGeometry, catFurMaterial);
+        head.position.set(0, 2.1, 1.6);
+        head.scale.set(1.2, 1.0, 1.0);
+        head.castShadow = true;
+        cat.add(head);
+
+        // Add a muzzle to make the face more cat-like - using a sphere instead of box
+        const muzzleGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+        const muzzle = new THREE.Mesh(muzzleGeometry, catFurMaterial);
+        muzzle.position.set(0, 1.9, 2.2);
+        muzzle.scale.set(0.8, 0.7, 0.8);
+        muzzle.castShadow = true;
+        cat.add(muzzle);
+
+        // Add a rounded muzzle tip
+        const muzzleTipGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const muzzleTip = new THREE.Mesh(muzzleTipGeometry, catFurMaterial);
+        muzzleTip.position.set(0, 1.9, 2.5);
+        muzzleTip.scale.set(1.0, 0.8, 0.6);
+        muzzleTip.castShadow = true;
+        cat.add(muzzleTip);
+
+        // Cat ears with better shape
+        function createEar() {
+            const earGroup = new THREE.Group();
+
+            // Outer ear - more triangular shape
+            const earGeometry = new THREE.ConeGeometry(0.4, 0.8, 4);
+            const ear = new THREE.Mesh(earGeometry, catEarMaterial);
+            ear.castShadow = true;
+            earGroup.add(ear);
+
+            // Inner ear
+            const innerEarGeometry = new THREE.ConeGeometry(0.25, 0.5, 4);
+            const innerEar = new THREE.Mesh(innerEarGeometry, catNoseMaterial);
+            innerEar.position.y = 0.1;
+            earGroup.add(innerEar);
+
+            return earGroup;
+        }
+
+        const leftEar = createEar();
+        leftEar.position.set(-0.5, 3.0, 1.7);
+        leftEar.rotation.x = -Math.PI / 12;
+        leftEar.rotation.z = -Math.PI / 6;
+        cat.add(leftEar);
+
+        const rightEar = createEar();
+        rightEar.position.set(0.5, 3.0, 1.7);
+        rightEar.rotation.x = -Math.PI / 12;
+        rightEar.rotation.z = Math.PI / 6;
+        cat.add(rightEar);
+
+        // Cat eyes with more detail
+        function createEye() {
+            const eyeGroup = new THREE.Group();
+
+            // Eye white
+            const eyeWhite = new THREE.Mesh(
+                new THREE.SphereGeometry(0.22, 24, 24),
+                new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    specular: 0x555555,
+                    shininess: 30
+                })
+            );
+            eyeGroup.add(eyeWhite);
+
+            // Iris
+            const iris = new THREE.Mesh(
+                new THREE.SphereGeometry(0.18, 24, 24),
+                catEyeMaterial
+            );
+            iris.position.z = 0.08;
+            eyeGroup.add(iris);
+
+            // Pupil
+            const pupil = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 16, 16),
+                new THREE.MeshPhongMaterial({
+                    color: 0x000000,
+                    specular: 0xffffff,
+                    shininess: 100
+                })
+            );
+            pupil.position.z = 0.15;
+            eyeGroup.add(pupil);
+
+            // Highlight
+            const highlight = new THREE.Mesh(
+                new THREE.SphereGeometry(0.03, 8, 8),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            highlight.position.set(0.05, 0.05, 0.2);
+            eyeGroup.add(highlight);
+
+            return eyeGroup;
+        }
+
+        const leftEye = createEye();
+        leftEye.position.set(-0.4, 2.3, 2.5);
+        leftEye.rotation.y = Math.PI / 24;
+        cat.add(leftEye);
+
+        const rightEye = createEye();
+        rightEye.position.set(0.4, 2.3, 2.5);
+        rightEye.rotation.y = -Math.PI / 24;
+        cat.add(rightEye);
+
+        // Cat nose with better shape
+        const noseGeometry = new THREE.ConeGeometry(0.2, 0.2, 3);
+        noseGeometry.rotateX(Math.PI);
+        const nose = new THREE.Mesh(noseGeometry, catNoseMaterial);
+        nose.position.set(0, 2.0, 2.6);
+        cat.add(nose);
+
+        // Cat mouth with curve
+        function createMouthCurve() {
+            const mouthGroup = new THREE.Group();
+
+            // Create a curved path for the mouth
+            const curve = new THREE.CubicBezierCurve3(
+                new THREE.Vector3(-0.3, 1.8, 2.55),
+                new THREE.Vector3(-0.1, 1.75, 2.6),
+                new THREE.Vector3(0.1, 1.75, 2.6),
+                new THREE.Vector3(0.3, 1.8, 2.55)
+            );
+
+            const points = curve.getPoints(20);
+            const mouthGeometry = new THREE.BufferGeometry().setFromPoints(points);
+
+            const mouthLine = new THREE.Line(
+                mouthGeometry,
+                new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
+            );
+
+            mouthGroup.add(mouthLine);
+            return mouthGroup;
+        }
+
+        const mouth = createMouthCurve();
+        cat.add(mouth);
+
+        // Cat whiskers with better positioning
+        function createWhisker(x, y, z, rotationY, rotationZ) {
+            const whisker = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.01, 0.005, 1.5),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            whisker.rotation.z = Math.PI / 2 + rotationZ;
+            whisker.rotation.y = rotationY;
+            whisker.position.set(x, y, z);
+            return whisker;
+        }
+
+        // Left whiskers
+        cat.add(createWhisker(-0.5, 2.0, 2.5, -Math.PI / 12, Math.PI / 36));
+        cat.add(createWhisker(-0.5, 1.9, 2.5, 0, 0));
+        cat.add(createWhisker(-0.5, 1.8, 2.5, Math.PI / 12, -Math.PI / 36));
+
+        // Right whiskers
+        cat.add(createWhisker(0.5, 2.0, 2.5, Math.PI / 12, -Math.PI / 36));
+        cat.add(createWhisker(0.5, 1.9, 2.5, 0, 0));
+        cat.add(createWhisker(0.5, 1.8, 2.5, -Math.PI / 12, Math.PI / 36));
+
+        // Cat legs with better joints and more angular shape
+        function createLeg(x, y, z, isFront) {
+            const legGroup = new THREE.Group();
+
+            // Upper leg - more angular and tapered
+            const upperLeg = new THREE.Mesh(
+                new THREE.BoxGeometry(0.4, 0.8, 0.4),
+                catFurMaterial
+            );
+            upperLeg.position.y = -0.4;
+            if (isFront) {
+                upperLeg.rotation.x = -Math.PI / 16;
+            } else {
+                upperLeg.rotation.x = Math.PI / 16;
+            }
+            upperLeg.castShadow = true;
+            legGroup.add(upperLeg);
+
+            // Lower leg - more angular
+            const lowerLeg = new THREE.Mesh(
+                new THREE.BoxGeometry(0.35, 0.7, 0.35),
+                catFurMaterial
+            );
+            lowerLeg.position.y = -1.1;
+            if (isFront) {
+                lowerLeg.rotation.x = Math.PI / 12;
+            } else {
+                lowerLeg.rotation.x = -Math.PI / 12;
+            }
+            lowerLeg.castShadow = true;
+            legGroup.add(lowerLeg);
+
+            // Paw - more oval-shaped using a sphere that's flattened
+            const pawGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const paw = new THREE.Mesh(
+                pawGeometry,
+                catPawMaterial
+            );
+            paw.position.y = -1.52; // Position to touch ground
+            paw.scale.set(1.0, 0.2, 1.2); // Flatten and elongate to make oval
+            if (isFront) {
+                paw.position.z = 0.05; // Move front paws slightly forward
+            } else {
+                paw.position.z = -0.05; // Move back paws slightly backward
+            }
+            paw.castShadow = true;
+            legGroup.add(paw);
+
+            // Add toe beans (cute little pads) - positioned on the bottom of the paw
+            if (isFront) {
+                // Front paws - beans at the front edge
+                for (let i = -1; i <= 1; i++) {
+                    const beanGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+                    const bean = new THREE.Mesh(
+                        beanGeometry,
+                        catNoseMaterial
+                    );
+                    // Position beans at the front edge of the paw and exactly at the bottom
+                    bean.position.set(i * 0.12, -1.58, 0.22);
+                    bean.scale.set(1.0, 0.2, 1.0); // Flatten to touch ground
+                    legGroup.add(bean);
+                }
+
+                // Add a larger central pad - positioned under the paw
+                const padGeometry = new THREE.SphereGeometry(0.15, 12, 12);
+                const pad = new THREE.Mesh(
+                    padGeometry,
+                    catNoseMaterial
+                );
+                pad.position.set(0, -1.58, 0.0);
+                pad.scale.set(1.0, 0.15, 0.8); // Flatten to touch ground
+                legGroup.add(pad);
+            } else {
+                // Back paws - beans at the front edge
+                for (let i = -1; i <= 1; i++) {
+                    const beanGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+                    const bean = new THREE.Mesh(
+                        beanGeometry,
+                        catNoseMaterial
+                    );
+                    // Position beans at the front edge of the paw and exactly at the bottom
+                    bean.position.set(i * 0.12, -1.58, 0.22);
+                    bean.scale.set(1.0, 0.2, 1.0); // Flatten to touch ground
+                    legGroup.add(bean);
+                }
+
+                // Add a larger central pad - positioned under the paw
+                const padGeometry = new THREE.SphereGeometry(0.15, 12, 12);
+                const pad = new THREE.Mesh(
+                    padGeometry,
+                    catNoseMaterial
+                );
+                pad.position.set(0, -1.58, 0.0);
+                pad.scale.set(1.0, 0.15, 0.8); // Flatten to touch ground
+                legGroup.add(pad);
+            }
+
+            legGroup.position.set(x, y, z);
+            return legGroup;
+        }
+
+        // Front legs - position them slightly forward
+        cat.add(createLeg(-0.7, 0.8, 1.3, true));
+        cat.add(createLeg(0.7, 0.8, 1.3, true));
+
+        // Back legs - position them slightly backward
+        cat.add(createLeg(-0.7, 0.8, -1.3, false));
+        cat.add(createLeg(0.7, 0.8, -1.3, false));
+
+        // Cat tail with better curve and taper
+        const tailCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 1.2, -2.0),
+            new THREE.Vector3(0.5, 1.5, -2.5),
+            new THREE.Vector3(1.0, 1.8, -2.7),
+            new THREE.Vector3(1.2, 2.0, -2.5),
+            new THREE.Vector3(1.0, 2.2, -2.3)
+        ]);
+
+        // Create a custom geometry for the tail that tapers at the end
+        const tailPoints = tailCurve.getPoints(32);
+        const tailPath = new THREE.CatmullRomCurve3(tailPoints);
+
+        // Create a tapered tube geometry
+        const tailRadiusSegments = 8;
+        const tailTubeSegments = 64;
+        const tailGeometry = new THREE.BufferGeometry();
+        const tailVertices = [];
+        const tailUvs = [];
+
+        for (let i = 0; i <= tailTubeSegments; i++) {
+            const t = i / tailTubeSegments;
+            const p = tailPath.getPointAt(t);
+            const r = 0.15 * (1 - t * 0.7); // Tail gets thinner toward the end
+
+            const normal = tailPath.getTangentAt(t);
+            const binormal = new THREE.Vector3(0, 1, 0).cross(normal).normalize();
+            const radial = normal.clone().cross(binormal).normalize();
+
+            for (let j = 0; j < tailRadiusSegments; j++) {
+                const u = j / tailRadiusSegments * Math.PI * 2;
+                const x = Math.cos(u);
+                const y = Math.sin(u);
+
+                const vertex = new THREE.Vector3(
+                    p.x + (x * binormal.x + y * radial.x) * r,
+                    p.y + (x * binormal.y + y * radial.y) * r,
+                    p.z + (x * binormal.z + y * radial.z) * r
+                );
+
+                tailVertices.push(vertex.x, vertex.y, vertex.z);
+                tailUvs.push(t, j / tailRadiusSegments);
+            }
+        }
+
+        // Create faces
+        const tailIndices = [];
+        for (let i = 0; i < tailTubeSegments; i++) {
+            for (let j = 0; j < tailRadiusSegments; j++) {
+                const a = i * tailRadiusSegments + j;
+                const b = i * tailRadiusSegments + ((j + 1) % tailRadiusSegments);
+                const c = (i + 1) * tailRadiusSegments + ((j + 1) % tailRadiusSegments);
+                const d = (i + 1) * tailRadiusSegments + j;
+
+                tailIndices.push(a, b, d);
+                tailIndices.push(b, c, d);
+            }
+        }
+
+        // Set attributes
+        tailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(tailVertices, 3));
+        tailGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(tailUvs, 2));
+        tailGeometry.setIndex(tailIndices);
+        tailGeometry.computeVertexNormals();
+
+        const tail = new THREE.Mesh(tailGeometry, catFurMaterial);
+        tail.castShadow = true;
+        cat.add(tail);
+
+        // Floor with better texture
+        const floorSize = 30;
+        const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize);
+
+        // Create a grass texture
+        const grassTexture = new function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+
+            // Base grass color
+            context.fillStyle = '#4a8c39';
+            context.fillRect(0, 0, 512, 512);
+
+            // Add texture and variation
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const length = Math.random() * 6 + 2;
+                const width = Math.random() * 2 + 0.5;
+
+                // Vary the grass colors
+                context.strokeStyle = Math.random() > 0.5 ? '#3a7029' : '#5a9c49';
+                context.lineWidth = width;
+                context.beginPath();
+                context.moveTo(x, y);
+                context.lineTo(x, y - length);
+                context.stroke();
+            }
+
+            // Add some dirt/soil patches
+            for (let i = 0; i < 30; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const radius = Math.random() * 5 + 2;
+
+                context.fillStyle = '#5e4b39';
+                context.globalAlpha = 0.2;
+                context.beginPath();
+                context.arc(x, y, radius, 0, Math.PI * 2);
+                context.fill();
+                context.globalAlpha = 1.0;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+            return texture;
+        }();
+
+        const floorMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            map: grassTexture,
+            side: THREE.DoubleSide,
+            shininess: 5
+        });
+
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = Math.PI / 2;
+        floor.position.y = -1.5;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Add 3D grass blades
+        function createGrassClump(x, z, size) {
+            const grassGroup = new THREE.Group();
+            const bladeCount = Math.floor(Math.random() * 5) + 5;
+
+            const grassMaterial = new THREE.MeshPhongMaterial({
+                color: 0x4a8c39,
+                shininess: 5,
+                side: THREE.DoubleSide
+            });
+
+            for (let i = 0; i < bladeCount; i++) {
+                // Create a simple blade of grass using a plane
+                const height = Math.random() * 0.4 + 0.2;
+                const width = Math.random() * 0.1 + 0.05;
+
+                const bladeGeometry = new THREE.PlaneGeometry(width, height);
+                // Move the origin to the bottom of the blade
+                bladeGeometry.translate(0, height / 2, 0);
+
+                const blade = new THREE.Mesh(
+                    bladeGeometry,
+                    grassMaterial.clone()
+                );
+
+                // Randomize the color slightly
+                blade.material.color.setHSL(
+                    0.3, // Hue (green)
+                    0.6 + Math.random() * 0.2, // Saturation
+                    0.4 + Math.random() * 0.2  // Lightness
+                );
+
+                // Position within the clump
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * size * 0.5;
+                blade.position.set(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                );
+
+                // Random rotation
+                blade.rotation.y = Math.random() * Math.PI;
+                // Slight random tilt
+                blade.rotation.x = (Math.random() * 0.2) - 0.1;
+                blade.rotation.z = (Math.random() * 0.2) - 0.1;
+
+                blade.castShadow = true;
+                blade.receiveShadow = true;
+
+                grassGroup.add(blade);
+            }
+
+            grassGroup.position.set(x, -1.5, z);
+            return grassGroup;
+        }
+
+        // Add grass clumps around the scene
+        for (let i = 0; i < 50; i++) {
+            const x = (Math.random() - 0.5) * 15;
+            const z = (Math.random() - 0.5) * 15;
+            // Make grass clumps denser near the cat
+            const distanceFromCenter = Math.sqrt(x * x + z * z);
+            if (distanceFromCenter < 10) {
+                const size = Math.random() * 0.5 + 0.5;
+                scene.add(createGrassClump(x, z, size));
+            }
+        }
+
+        // Add a denser patch of grass directly under the cat
+        for (let i = 0; i < 20; i++) {
+            const x = (Math.random() - 0.5) * 3;
+            const z = (Math.random() - 0.5) * 3;
+            const size = Math.random() * 0.5 + 0.3;
+            scene.add(createGrassClump(x, z, size));
+        }
+
+        // Position camera
+        camera.position.set(0, 3, 10);
+        controls.update();
+
+        // Animation variables
+        let time = 0;
+        const tailSpeed = 0.8;
+        const earSpeed = 0.3;
+        const breathingSpeed = 0.5;
+
+        // Path parameters for the cat's oval movement
+        const pathRadius = {
+            x: 4, // Width of the oval
+            z: 3  // Length of the oval
+        };
+        const walkSpeed = 0.2; // Speed of walking
+
+        // Create leg references for animation
+        const frontLeftLeg = createLeg(-0.7, 0.8, 1.3, true);
+        const frontRightLeg = createLeg(0.7, 0.8, 1.3, true);
+        const backLeftLeg = createLeg(-0.7, 0.8, -1.3, false);
+        const backRightLeg = createLeg(0.7, 0.8, -1.3, false);
+
+        // Add legs to cat
+        cat.add(frontLeftLeg);
+        cat.add(frontRightLeg);
+        cat.add(backLeftLeg);
+        cat.add(backRightLeg);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            time += 0.01;
+            
+            // Update sky position to follow camera
+            updateSkyPosition();
+
+            // Remove walking animation and path movement
+            // Keep cat stationary
+            cat.position.x = 0;
+            cat.position.y = -0.7;
+            cat.position.z = 0;
+            cat.rotation.y = 0; // Face forward
+
+            // Animate clouds - slow gentle movement
+            sky.children.forEach((child, index) => {
+                if (index > 0) { // Skip the sky dome (first child)
+                    if (index === 1) { // Sun
+                        // Make sun rays pulsate
+                        for (let i = 2; i < child.children.length; i++) {
+                            child.children[i].scale.y = 1 + Math.sin(time * 0.5 + i) * 0.1;
+                        }
+                    } else if (index >= sky.children.length - 12) { // Birds (last 12 children)
+                        const bird = child;
+                        const data = bird.userData;
+                        
+                        // Wing flapping animation
+                        bird.children[1].rotation.z = Math.sin(time * data.wingFlapSpeed) * data.wingFlapAmount;
+                        bird.children[2].rotation.z = -Math.sin(time * data.wingFlapSpeed) * data.wingFlapAmount;
+                        
+                        // Flying in a circle with some vertical movement
+                        const angle = data.startAngle + time * data.flySpeed;
+                        const verticalOffset = Math.sin(time * data.verticalSpeed) * data.verticalAmount;
+                        
+                        bird.position.x = Math.cos(angle) * data.circleRadius;
+                        bird.position.y = data.circleHeight + verticalOffset;
+                        bird.position.z = Math.sin(angle) * data.circleRadius;
+                        
+                        // Make bird face the direction it's flying
+                        bird.rotation.y = Math.atan2(-Math.cos(angle), -Math.sin(angle));
+                    } else { // Clouds
+                        // Move clouds very slowly
+                        child.position.x += Math.sin(time * 0.1 + index) * 0.05;
+                        child.position.z += Math.cos(time * 0.1 + index * 0.7) * 0.03;
+                        
+                        // Very subtle rotation
+                        child.rotation.y += 0.0005;
+                    }
+                }
+            });
+
+            // Subtle idle animations for the legs - but keep paws firmly on ground
+            const idleAmount = Math.sin(time * 0.5) * 0.01;
+
+            // Very subtle upper leg movement for idle state, but paws stay on ground
+            frontLeftLeg.children[0].position.y = -0.4 + idleAmount; // Upper leg
+            frontRightLeg.children[0].position.y = -0.4 - idleAmount;
+            backLeftLeg.children[0].position.y = -0.4 - idleAmount;
+            backRightLeg.children[0].position.y = -0.4 + idleAmount;
+
+            // Tail wagging
+            tail.rotation.z = Math.sin(time * tailSpeed) * 0.2;
+
+            // Ear twitching (occasional)
+            if (Math.sin(time * 0.2) > 0.9) {
+                leftEar.rotation.z = -Math.PI / 6 + Math.sin(time * earSpeed) * 0.1;
+                rightEar.rotation.z = Math.PI / 6 - Math.sin(time * earSpeed) * 0.1;
+            }
+
+            // Subtle breathing - now affects the whole body more naturally
+            const breathAmount = Math.sin(time * breathingSpeed) * 0.02;
+            torso.scale.y = 1.0 + breathAmount;
+            torso.scale.z = 1.0 + breathAmount;
+            chest.scale.y = 1.0 + breathAmount;
+            chest.scale.z = 1.0 + breathAmount;
+            haunches.scale.y = 1.0 + breathAmount;
+
+            // Blink occasionally
+            if (Math.sin(time * 0.5) > 0.95) {
+                leftEye.scale.y = 0.1;
+                rightEye.scale.y = 0.1;
+            } else {
+                leftEye.scale.y = 1;
+                rightEye.scale.y = 1;
+            }
+
+            controls.update(); // Required for damping and auto-rotation
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // Add fog to create depth in the scene
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
+
+        // Make sure the sky is centered on the camera
+        function updateSkyPosition() {
+            sky.position.copy(camera.position);
+        }
+    </script>
+</body>
+</html>
